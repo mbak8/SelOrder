@@ -1,0 +1,12 @@
+### Logowanie (Pobranie tokena)
+POST http://localhost:5000/api/login
+Content-Type: application/json
+
+{
+  "login": "admin",
+  "password": "haslo123"
+}
+
+### Sprawdzenie kim jestem (Wklej token poni¿ej po "Bearer ")
+GET http://localhost:5000/api/me
+Authorization: Bearer TU_WKLEJ_TOKEN_Z_ODPOWIEDZI_WYZEJ
