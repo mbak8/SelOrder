@@ -1,0 +1,84 @@
+/* Layout.css */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh; /* 100% wysokości okna przeglądarki */
+  width: 100vw;
+}
+
+/* --- GÓRNY PASEK (HEADER) --- */
+.top-header {
+  height: 60px;
+  background-color: #ffffff; /* Kolor firmowy */
+  color: rgb(0, 0, 0);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  justify-content: space-between; /* Rozsuwa logo i przycisk wylogowania */
+  z-index: 10; /* Żeby cień był nad treścią */
+}
+
+.logo-container {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  /* Dodajemy to, żeby kontener nie zwijał się do zera */
+  min-width: 150px; 
+}
+
+.logo-image {
+  /* Zamiast max-height dajemy sztywne height - to zmusi SVG do przeliczenia szerokości */
+  height: 40px; 
+  width: auto;
+  
+  /* To naprawia problem, jeśli SVG ma dziwne proporcje */
+  object-fit: contain; 
+  display: block;
+}
+
+/* --- KONTENER GŁÓWNY (SIDEBAR + TREŚĆ) --- */
+.main-body {
+  display: flex;
+  flex: 1; /* Zajmij całą pozostałą wysokość pod headerem */
+  overflow: hidden; /* Zapobiega scrollowaniu całego body, tylko treść się scrolluje */
+}
+
+/* --- MENU BOCZNE (SIDEBAR) --- */
+.sidebar {
+  width: 250px;
+  background-color: #f4f4f4;
+  border-right: 1px solid #ddd;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.menu-item {
+  padding: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background 0.2s;
+  color: #333;
+  text-decoration: none;
+}
+
+.menu-item:hover {
+  background-color: #e0e0e0;
+}
+
+/* --- TREŚĆ WŁAŚCIWA --- */
+.content-area {
+  flex: 1; /* Zajmij resztę szerokości */
+  padding: 30px;
+  background-color: #fff;
+  overflow-y: auto; /* Scrolluj tylko ten obszar, jeśli treści jest dużo */
+}
+
+/* Żeby aktywny link był niebieski */
+.menu-item.active {
+  background-color: #e3f2fd; /* Jasny niebieski */
+  color: #0056b3;
+  font-weight: bold;
+}
