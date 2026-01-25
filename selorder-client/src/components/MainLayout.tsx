@@ -1,65 +1,110 @@
-import { ReactNode } from 'react';
-import { NavLink } from 'react-router-dom'; // <--- IMPORT
-import './Layout.css';
-
-// 1. IMPORTUJEMY LOGO (ścieżka zależy od tego, gdzie jest plik)
-// Skoro jesteśmy w 'components', musimy wyjść o jeden poziom w górę (..) do 'assets'
+import { useState } from 'react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import './MainLayout.css';
 import logo from '../assets/agroselnet-logo-color.svg';
 
 interface MainLayoutProps {
-  children: ReactNode;      // To co wyświetlimy w środku (treść)
-  onLogout: () => void;     // Funkcja do wylogowania przekazana z App
-  username?: string;        // Opcjonalnie nazwa użytkownika
-  t: (key: string) => string; // <--- Przekazujemy funkcję tłumaczącą
+  children: React.ReactNode;
+  onLogout: () => void;
+  username: string;
+  t: (key: string) => string;
 }
 
 export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps) => {
+  const navigate = useNavigate();
+  const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const closeMenu = () => setMobileMenuOpen(false);
+
   return (
     <div className="app-container">
       
-      {/* 1. HEADER */}
-      <header className="top-header">
-           {/* 2. ZAMIENIAMY TEKST NA OBRAZEK */}
+      {/* 1. HEADER DESKTOP */}
+      <div className="desktop-header">
         <div className="logo-container">
-            <img src={logo} alt="AgroSelNet Logo" className="logo-image" />
+            <img src={logo} alt="Logo" className="logo-image" />
         </div>
         <div>
-            <h2>SelOrder</h2>
+            <h2>
+              <span style={{ color: '#4ab26b' }}>Sel</span>
+              <span style={{ color: '#000000' }}>Order</span>
+            </h2>
         </div>
-        <div style={{ display: 'flex', gap: 20, alignItems: 'center' }}>
-          <span>{username}</span>
-          <button 
-            onClick={onLogout}
-            style={{ padding: '5px 15px', background: 'white', color: '#0056b3', border: 'none', cursor: 'pointer', borderRadius: 4 }}
-          >
-            Wyloguj
-          </button>
-        </div>
-      </header>
+        <div style={{ fontSize: '0.9em' }}>{username}</div>
+      </div>
 
+      {/* 2. HEADER MOBILE (Widoczny tylko na telefonie) */}
+      <div className="mobile-header">
+         {/* Lewa strona: Hamburger */}
+         <button className="hamburger-btn" onClick={() => setMobileMenuOpen(true)}>
+           ☰
+         </button>
 
-<div className="main-body">
-        {/* SIDEBAR - Zmieniamy divy na NavLink */}
-        <aside className="sidebar">
-           
-          <NavLink to="/orders" className="menu-item">
-            🛒 {t('Menu.Orders')}
-          </NavLink>
+         {/* Środek: Tytuł (zwykły div, bez marginesów h2) */}
+         <div className="mobile-logo-text">
+            <span style={{ color: '#4ab26b' }}>Sel</span>
+            <span style={{ color: '#000000' }}>Order</span>
+         </div>
 
-          <NavLink to="/articles" className={({ isActive }) => isActive ? "menu-item active" : "menu-item"}>
-            📦 {t('Menu.Articles')}
-          </NavLink>
+         {/* Prawa strona: User (zabezpieczony przed długim tekstem) */}
+         <div className="mobile-user-info">
+            {username}
+         </div>
+      </div>      
 
-          <NavLink to="/users" className="menu-item">
-            👤 {t('Menu.Users')}
-          </NavLink>
+      {/* 3. OVERLAY (Tylko mobile) */}
+      {isMobileMenuOpen && (
+        <div className="overlay" onClick={closeMenu} />
+      )}
 
+      {/* 4. GŁÓWNA CZĘŚĆ (Sidebar + Content obok siebie) */}
+      <div className="layout-body">
+        
+        <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
+          <div className="sidebar-header">
+            <span>SelOrder</span>
+            <span className="close-btn" onClick={closeMenu}>✕</span>
+          </div>
+
+          <nav className="sidebar-nav">
+            <NavLink 
+              to="/orders" 
+              className={({ isActive }) => isActive ? "menu-item active" : "menu-item"}
+              onClick={closeMenu}
+            >
+              🛒 {t('Menu.Orders')}
+            </NavLink>
+
+            <NavLink 
+              to="/articles" 
+              className={({ isActive }) => isActive ? "menu-item active" : "menu-item"}
+              onClick={closeMenu}
+            >
+              📦 {t('Menu.Articles')}
+            </NavLink>
+
+            <NavLink 
+              to="/users" 
+              className={({ isActive }) => isActive ? "menu-item active" : "menu-item"}
+              onClick={closeMenu}
+            >
+              👤 {t('Menu.Users')}
+            </NavLink>
+          </nav>
+
+          <div className="sidebar-footer">
+            <div style={{ marginBottom: 10, fontSize: '0.9em', color: '#666' }}>
+              User: <strong>{username}</strong>
+            </div>
+            <button onClick={onLogout} className="logout-btn">
+              Wyloguj
+            </button>
+          </div>
         </aside>
 
-        {/* CONTENT */}
-        <main className="content-area">
+        <main className="content">
           {children}
         </main>
+      
       </div>
     </div>
   );
