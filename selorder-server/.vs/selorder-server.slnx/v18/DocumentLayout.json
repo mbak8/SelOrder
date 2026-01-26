@@ -74,8 +74,7 @@
               "RelativeToolTip": "Services\\TranslationService.cs",
               "ViewState": "AgIAABMAAAAAAAAAAAAgwAAAAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-22T18:13:36.729Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-22T18:13:36.729Z"
             },
             {
               "$type": "Document",
@@ -87,8 +86,7 @@
               "RelativeToolTip": "Entities\\Entities.cs",
               "ViewState": "AgIAABMAAAAAAAAAAAAcwC0AAAAAAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-22T18:12:54.401Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-22T18:12:54.401Z"
             },
             {
               "$type": "Document",
@@ -184,8 +182,7 @@
               "RelativeToolTip": "Services\\ArticleService.cs",
               "ViewState": "AgIAADcAAAAAAAAAAAAgwEUAAAAyAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-21T16:37:47.268Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-21T16:37:47.268Z"
             },
             {
               "$type": "Document",
@@ -209,8 +206,7 @@
               "RelativeToolTip": "DTOs\\ArticleDto.cs",
               "ViewState": "AgIAAAAAAAAAAAAAAAAAABAAAAACAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2026-01-21T16:36:20.068Z",
-              "EditorCaption": ""
+              "WhenOpened": "2026-01-21T16:36:20.068Z"
             }
           ]
         }

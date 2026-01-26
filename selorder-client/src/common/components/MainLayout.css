@@ -40,6 +40,7 @@
   display: block;
 }
 
+
 /* --- 3. CIAŁO APLIKACJI (SIDEBAR + TREŚĆ) --- */
 .layout-body {
   display: flex; /* Sidebar i Content obok siebie */
@@ -49,7 +50,7 @@
 
 /* --- 4. SIDEBAR (MENU BOCZNE) --- */
 .sidebar {
-  width: 250px;
+  width: 170px;
   background-color: #f8f9fa;
   border-right: 1px solid #ddd;
   flex-shrink: 0;
@@ -140,6 +141,10 @@
    6. WIDOK MOBILNY (Telefony < 768px)
    ========================================= */
 @media (max-width: 768px) {
+
+  .layout-body {
+    display: block;
+  }
   
   /* Zamiana headerów */
   .desktop-header { display: none; }
@@ -193,16 +198,56 @@
   }
 
   /* --- Reszta (Sidebar) bez zmian --- */
+/* Sidebar staje się wysuwaną szufladą */
   .sidebar {
-    position: fixed;
+/* TO JEST KLUCZOWE: */
+    position: fixed;   /* Wyjmuje element z przepływu dokumentu - znika "duch" */
     top: 0;
     left: 0;
-    height: 100vh;
-    z-index: 1000;
+    
+    width: 280px;      /* Szerokość wysuwanej szuflady */
+    height: 100dvh;    /* Pełna wysokość */
+    z-index: 1000;     /* Musi być nad wszystkim */
+    
     background-color: #fff;
-    box-shadow: 2px 0 2px rgba(0,0,0,0.2);
+    box-shadow: 2px 0 10px rgba(0,0,0,0.2);
+    
+    /* Domyślnie schowane */
     transform: translateX(-100%);
+    transition: transform 0.3s ease-in-out;
+    
+    /* Flex dla układu wewnątrz menu */
+    display: flex;
+    flex-direction: column;
   }
+
+  /* ZMIANA 3: To sprawia, że jeśli lista linków jest długa, 
+     to scrolluje się TYLKO ŚRODEK menu, a przycisk Wyloguj jest zawsze widoczny */
+  .sidebar-nav {
+    flex: 1;            /* Zajmij całe wolne miejsce */
+    overflow-y: auto;   /* Włącz przewijanie, jeśli linki się nie mieszczą */
+    min-height: 0;      /* Ważne dla Firefoxa przy flexboxie */
+  }
+
+.sidebar-footer {
+  margin-top: auto; /* Dopycha do dołu (to już masz) */
+  border-top: 1px solid #eee;
+  
+  /* --- ZMIANA TUTAJ --- */
+  
+  /* Padding: Góra | Prawo | Dół | Lewo */
+  /* Dajemy 20px z góry/boków, ale OD DOŁU wyliczamy bezpieczny margines */
+  padding: 20px 20px calc(30px + env(safe-area-inset-bottom));
+  
+  /* Dlaczego calc?
+     30px - to sztywny odstęp, żeby przycisk nie dotykał krawędzi.
+     env(safe-area-inset-bottom) - to dodatkowy odstęp na iPhone'ach 
+     (dla tej czarnej kreski do przesuwania aplikacji). 
+  */
+  
+  background-color: #fff; /* Zabezpieczenie tła */
+  flex-shrink: 0;
+}
 
   .sidebar.open {
     transform: translateX(0);
@@ -222,9 +267,20 @@
     background: rgba(0, 0, 0, 0.5);
     z-index: 900;
   }
-
-  .content {
-    padding: 0; /* Mniejszy padding na telefonie, żeby karty były szersze */
-    background-color: #f4f6f8; /* Lekko szare tło, żeby białe karty się odróżniały */
-  }
+.content {
+  /* 1. Odstęp od krawędzi telefonu (np. 10px z każdej strony) */
+  padding: 10px; 
+  
+  /* 2. Szerokość: 100% dostępnego miejsca (nie 100vw, bo to powoduje suwak przez pasek przewijania) */
+  width: 100%; 
+  
+  /* 3. To sprawia, że padding jest częścią szerokości, a nie dodatkiem */
+  box-sizing: border-box; 
+  
+  /* 4. Bezpiecznik: jeśli coś wystaje, utnij to */
+  overflow-x: hidden;
+  
+  /* 5. Reset minimalnej szerokości */
+  min-width: 0;
+}
 }

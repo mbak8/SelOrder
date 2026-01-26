@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import './MainLayout.css';
-import logo from '../assets/agroselnet-logo-color.svg';
+import logo from '../../assets/agroselnet-logo-color.svg';
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -29,11 +29,10 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
               <span style={{ color: '#000000' }}>Order</span>
             </h2>
         </div>
-        <div style={{ fontSize: '0.9em' }}>{username}</div>
       </div>
 
       {/* 2. HEADER MOBILE (Widoczny tylko na telefonie) */}
-      <div className="mobile-header">
+      <div></div><div className="mobile-header">
          {/* Lewa strona: Hamburger */}
          <button className="hamburger-btn" onClick={() => setMobileMenuOpen(true)}>
            ☰
@@ -45,10 +44,6 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
             <span style={{ color: '#000000' }}>Order</span>
          </div>
 
-         {/* Prawa strona: User (zabezpieczony przed długim tekstem) */}
-         <div className="mobile-user-info">
-            {username}
-         </div>
       </div>      
 
       {/* 3. OVERLAY (Tylko mobile) */}
@@ -61,7 +56,9 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
         
         <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
           <div className="sidebar-header">
-            <span>SelOrder</span>
+            <div style={{ marginBottom: 10, fontSize: '0.9em', color: '#666' }}>
+              <strong>{username}</strong>
+            </div>
             <span className="close-btn" onClick={closeMenu}>✕</span>
           </div>
 
@@ -92,9 +89,7 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
           </nav>
 
           <div className="sidebar-footer">
-            <div style={{ marginBottom: 10, fontSize: '0.9em', color: '#666' }}>
-              User: <strong>{username}</strong>
-            </div>
+
             <button onClick={onLogout} className="logout-btn">
               Wyloguj
             </button>

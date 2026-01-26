@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { TranslationProvider, useTranslations } from './context/TranslationContext';
-import { MainLayout } from './components/MainLayout';
+import { TranslationProvider, useTranslations } from './common/context/TranslationContext';
+import { MainLayout } from './common/components/MainLayout';
 
 // Import stron
-import { LoginPage, type LoginResponse } from './pages/LoginPage';
+import { LoginPage, type LoginResponse } from './common/pages/LoginPage';
 import { ArticlesPage } from './pages/ArticlesPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { OrderDetailsPage } from './pages/OrderDetailsPage';

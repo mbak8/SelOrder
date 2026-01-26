@@ -1,0 +1,219 @@
+/* =========================================
+   1. STYLE BAZOWE (DESKTOP)
+   ========================================= */
+
+/* Główny kontener tabeli */
+.datagrid-container {
+  width: 100%;
+  overflow-x: auto; /* Suwak tylko na desktopie, gdy tabela jest szeroka */
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  background: white;
+  box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+/* Tabela */
+.datagrid-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+  min-width: 600px; /* Na desktopie wymuszamy szerokość, żeby kolumny się nie gniotły */
+}
+
+/* Komórki nagłówka i danych */
+.datagrid-table th, 
+.datagrid-table td {
+  padding: 12px 15px;
+  text-align: left;
+  border-bottom: 1px solid #f0f0f0;
+  vertical-align: middle;
+  color: #333;
+}
+
+/* Nagłówek */
+.datagrid-table th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: #444;
+  border-bottom: 2px solid #ddd;
+  white-space: nowrap; /* Tytuły kolumn w jednej linii */
+}
+
+/* Hover na wierszu (tylko desktop) */
+.datagrid-table tbody tr:hover {
+  background-color: #f1f8ff;
+  transition: background-color 0.2s;
+}
+
+/* --- STOPKA (Paginacja) --- */
+.datagrid-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px;
+  background-color: #fff;
+  border-top: 1px solid #e0e0e0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.datagrid-footer-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.datagrid-btn {
+  padding: 8px 16px;
+  border: 1px solid #ccc;
+  background: #fff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: #333;
+}
+
+.datagrid-btn:hover:not(:disabled) {
+  background-color: #e9ecef;
+  border-color: #bbb;
+}
+
+.datagrid-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #f8f9fa;
+}
+
+/* Inputy filtrów */
+.datagrid-filter-input {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+/* =========================================
+   2. STYLE MOBILNE (Max-width: 768px)
+   ========================================= */
+
+/* =========================================
+   2. STYLE MOBILNE (Max-width: 768px)
+   ========================================= */
+
+@media (max-width: 768px) {
+
+  /* 1. RESET KONTENERA I TABELI */
+  .datagrid-container {
+    border: none;
+    box-shadow: none;
+    overflow: visible;
+    background: transparent;
+    padding: 0;
+    
+    /* WYMUSZAMY PEŁNĄ SZEROKOŚĆ KONTENERA */
+    display: block;
+    width: 100% !important;
+  }
+
+  /* Reset elementów tabeli - wszystko ma być blokiem na pełną szerokość */
+  .datagrid-table, 
+  .datagrid-table tbody {
+    display: block;
+    width: 100% !important;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
+  /* 2. UKRYWAMY NAGŁÓWEK TABELI */
+  .datagrid-table thead {
+    display: none; 
+  }
+
+  /* 3. STYL KARTY (Wiersz staje się kartą) */
+  .datagrid-table tr {
+    display: block;
+    
+    /* --- TO JEST KLUCZOWA ZMIANA --- */
+    width: 100% !important; /* Wymuszamy rozciągnięcie na 100% rodzica */
+    box-sizing: border-box; /* Padding nie dodaje się do szerokości */
+    /* ------------------------------ */
+
+    background-color: #fff;
+    margin-bottom: 15px;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    padding: 15px;
+    
+    /* Usuwamy ograniczenia */
+    max-width: none;
+    min-width: 0;
+  }
+
+  /* Styl komórek wewnątrz karty */
+  .datagrid-table td {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%; /* Komórka też na 100% szerokości karty */
+    box-sizing: border-box;
+    
+    padding: 10px 0;
+    border-bottom: 1px solid #f0f0f0;
+    text-align: right;
+    font-size: 0.95rem;
+
+    word-break: break-all;
+    overflow-wrap: anywhere;
+    white-space: normal;
+  }
+
+  .datagrid-table td:last-child {
+    border-bottom: none;
+  }
+  
+  /* Etykiety */
+  .datagrid-table td::before {
+    content: attr(data-label);
+    float: left;
+    font-weight: 700;
+    color: #666;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    text-align: left;
+    margin-right: 15px;
+    flex-shrink: 0;
+    max-width: 40%;
+    word-break: normal;
+  }
+
+  /* Wyłącz hover na mobile */
+  .datagrid-table tbody tr:hover {
+    background-color: #fff;
+  }
+
+  /* Stopka */
+  .datagrid-footer {
+    flex-direction: column;
+    gap: 15px;
+    text-align: center;
+    border-top: none;
+    background: transparent;
+    padding: 10px 0;
+    width: 100%; /* Stopka też na 100% */
+    box-sizing: border-box;
+  }
+
+  .datagrid-footer-buttons {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .datagrid-btn {
+    flex: 1;
+    padding: 12px;
+    font-size: 1rem;
+    justify-content: center;
+  }
+}

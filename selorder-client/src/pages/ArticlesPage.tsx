@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
-import { apiClient } from '../api/client';
-import { DataGrid, type Column } from '../components/common/DataGrid';
-import { useTranslations } from  '../context/TranslationContext';
+import { apiClient } from '../common/api/client';
+import { DataGrid, type Column } from '../common/components/DataGrid';
+import { useTranslations } from  '../common/context/TranslationContext';
 
 // Struktura odpowiedzi z backendu
 interface PagedResponse<T> {

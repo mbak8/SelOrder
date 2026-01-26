@@ -1,8 +1,8 @@
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState, useMemo } from 'react';
-import { apiClient } from '../api/client';
-import { DataGrid, type Column } from '../components/common/DataGrid';
-import { useTranslations } from  '../context/TranslationContext';
+import { apiClient } from '../common/api/client';
+import { DataGrid, type Column } from '../common/components/DataGrid';
+import { useTranslations } from  '../common/context/TranslationContext';
 
 // 1. Interfejs zgodny z C# OrderDto
 interface Order {
