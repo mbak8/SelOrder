@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react';
-import { useTranslations } from  '../../context/TranslationContext';
+import { useTranslations } from  '../context/TranslationContext';
 import './DataGrid.css';
 
 export interface Column<T> {

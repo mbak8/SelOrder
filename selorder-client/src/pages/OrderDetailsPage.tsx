@@ -1,8 +1,8 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { apiClient } from '../api/client';
-import { DataGrid, type Column } from '../components/common/DataGrid';
-import { useTranslations } from '../context/TranslationContext';
+import { apiClient } from '../common/api/client';
+import { DataGrid, type Column } from '../common/components/DataGrid';
+import { useTranslations } from '../common/context/TranslationContext';
 
 // 1. Definicja typów (zgodna z Twoim DTO w C#)
 interface OrderItem {
