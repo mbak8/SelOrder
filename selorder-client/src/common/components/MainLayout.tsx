@@ -32,7 +32,7 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
       </div>
 
       {/* 2. HEADER MOBILE (Widoczny tylko na telefonie) */}
-      <div></div><div className="mobile-header">
+      <div className="mobile-header">
          {/* Lewa strona: Hamburger */}
          <button className="hamburger-btn" onClick={() => setMobileMenuOpen(true)}>
            ☰
@@ -79,6 +79,7 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
               📦 {t('Menu.Articles')}
             </NavLink>
 
+{/*
             <NavLink 
               to="/users" 
               className={({ isActive }) => isActive ? "menu-item active" : "menu-item"}
@@ -86,9 +87,21 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
             >
               👤 {t('Menu.Users')}
             </NavLink>
+*/}
+
+
           </nav>
 
           <div className="sidebar-footer">
+            <NavLink 
+              to="/profile" 
+              className={({ isActive }) => isActive ? "menu-item active" : "menu-item"}
+              onClick={closeMenu}
+              // Dodajemy margines, żeby oddzielić go od przycisku Wyloguj
+              style={{ marginBottom: '10px' }} 
+            >
+              ⚙️ Mój Profil
+            </NavLink>
 
             <button onClick={onLogout} className="logout-btn">
               Wyloguj

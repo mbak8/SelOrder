@@ -9,21 +9,27 @@ public interface ITenantAware
 {
     int TenantId { get; set; }
 }
-
+[Table("Users")]
 public class User : ITenantAware
 {
+    [Key]
     public int UserId { get; set; }
     public int TenantId { get; set; }
 
     [StringLength(2)]
     public required string LanguageCode { get; set; } // Np. "PL", "EN"
 
+    [MaxLength(50)]
     public required string Login { get; set; }
     public string? PasswordHash { get; set; }
     public bool IsActive { get; set; }
 
+    [MaxLength(50)]
     public string? FirstName { get; set; }
+    [MaxLength(50)]
     public string? LastName { get; set; }
+    [MaxLength(125)]
+    public string? Email { get; set; }
 }
 
 [Table("OrderItems")]
@@ -151,7 +157,7 @@ public class Article
     public Unit? Unit { get; set; }
 }
 
-
+[Table("Languages")]
 public class Language
 {
     [Key]

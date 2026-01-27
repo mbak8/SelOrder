@@ -4,13 +4,41 @@ using Microsoft.Extensions.Caching.Hybrid;
 
 namespace Services;
 
+
 public class TranslationService(
     HybridCache cache,
     IServiceScopeFactory scopeFactory,
     IAppUserContext userContext)
 {
-    // Ta metoda automatycznie używa języka przypisanego do Usera!
-    public async Task<string> GetUnitNameAsync(int unitId, CancellationToken ct = default)
+    // ... (metoda GetUnitNameAsync bez zmian) ...
+
+    // ZMIANA TUTAJ: Dodajemy parametr 'string? requestedLang = null'
+    public async Task<Dictionary<string, string>> GetAppDictionaryAsync(string? requestedLang = null, CancellationToken ct = default)
+    {
+        // LOGIKA: Jeśli frontend podał język, użyj go. Jeśli nie, weź z tokena.
+        // Jeśli nawet w tokenie jest null (niezalogowany), użyj domyślnego "PL".
+        string lang = !string.IsNullOrEmpty(requestedLang)
+                      ? requestedLang
+                      : (userContext.LanguageCode ?? "PL");
+
+        string cacheKey = $"app-dict-{lang}";
+
+        return await cache.GetOrCreateAsync(cacheKey, async token =>
+        {
+            using var scope = scopeFactory.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+            return await db.AppTranslations
+                .Where(t => t.LanguageCode == lang)
+                .ToDictionaryAsync(t => t.TranslationKey, t => t.TranslatedText, token);
+        },
+        tags: ["translations"],
+        cancellationToken: ct);
+    }
+
+
+    /*
+       public async Task<string> GetUnitNameAsync(int unitId, CancellationToken ct = default)
     {
         string lang = userContext.LanguageCode; // Np. "EN" z Tokena
         string key = $"unit:{unitId}:{lang}";
@@ -33,24 +61,5 @@ public class TranslationService(
         tags: ["translations"], // Tagi do inwalidacji cache
         cancellationToken: ct);
     }
-
-    // NOWA METODA: Pobiera cały słownik aplikacji dla zalogowanego języka
-    public async Task<Dictionary<string, string>> GetAppDictionaryAsync(CancellationToken ct = default)
-    {
-        string lang = userContext.LanguageCode; // np. "PL"
-        string cacheKey = $"app-dict-{lang}";
-
-        return await cache.GetOrCreateAsync(cacheKey, async token =>
-        {
-            using var scope = scopeFactory.CreateScope();
-            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-            // Pobieramy wszystkie teksty dla danego języka i zamieniamy w Słownik (Key -> Value)
-            return await db.AppTranslations
-                .Where(t => t.LanguageCode == lang)
-                .ToDictionaryAsync(t => t.TranslationKey, t => t.TranslatedText, token);
-        },
-        tags: ["translations"],
-        cancellationToken: ct);
-    }
+    */
 }
