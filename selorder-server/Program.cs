@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Services;
 using System.Text;
+using SelOrder.Server.DTOs;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -75,6 +76,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddScoped<ArticleService>();
 builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<UserService>();
 
 var app = builder.Build();
 
@@ -93,34 +95,54 @@ app.UseAuthorization();  // 3. Potem co możesz robić
 // SEKCJA ENDPOINTÓW (Tu wklej endpointy!)
 // ==========================================
 
+// Program.cs
 
-app.MapGet("/api/translations", async (TranslationService service) =>
+app.MapGet("/api/translations", async (TranslationService service, string? lang) =>
 {
-    var dictionary = await service.GetAppDictionaryAsync();
+    var dictionary = await service.GetAppDictionaryAsync(lang);
     return Results.Ok(dictionary);
-});
-//.RequireAuthorization(); // Wymaga zalogowania
+})
+.AllowAnonymous();  
 
 app.MapPost("/api/login", async (
     [FromBody] LoginRequest request,
     AppDbContext db,
     IAuthService authService) =>
 {
-    // 1. Szukamy użytkownika w bazie (globalnie, bo login jest unikalny)
     var user = await db.Users.FirstOrDefaultAsync(u => u.Login == request.Login);
 
-    // 2. Walidacja hasła
-    // UWAGA: W produkcji użyj BCrypt.Verify(request.Password, user.PasswordHash)!
-    // Tutaj dla uproszczenia zakładamy, że w bazie masz czysty tekst lub proste porównanie.
-    if (user == null || user.PasswordHash != request.Password)
+    if (user == null)
     {
         return Results.Unauthorized();
     }
 
-    // 3. Jeśli OK -> Generujemy Token
+    // --- ZMIANA TUTAJ: WERYFIKACJA HASHU ---
+    // Najpierw sprawdzamy, czy hasło w bazie to Hash BCrypta (zaczyna się od $2a$, $2b$ itp.)
+    bool isPasswordValid = false;
+
+    if (user.PasswordHash.StartsWith("$"))
+    {
+        // Jeśli w bazie jest hash, używamy weryfikacji BCrypt
+        try
+        {
+            isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
+        }
+        catch { isPasswordValid = false; }
+    }
+    else
+    {
+        // Fallback: Jeśli w bazie masz stare hasła w czystym tekście (dla kompatybilności na start)
+        isPasswordValid = user.PasswordHash == request.Password;
+    }
+
+    if (!isPasswordValid)
+    {
+        return Results.Unauthorized();
+    }
+    // ---------------------------------------
+
     var token = authService.GenerateJwtToken(user);
 
-    // 4. Zwracamy Token oraz Język (żeby frontend wiedział, jak się ustawić)
     return Results.Ok(new
     {
         Token = token,
@@ -129,6 +151,23 @@ app.MapPost("/api/login", async (
         TenantId = user.TenantId
     });
 });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 /*
 app.MapGet("/api/articles", async (ArticleService service) =>
 {
@@ -193,7 +232,39 @@ app.MapGet("/api/me", (IAppUserContext context) =>
 
 
 
+// ==========================================
+// ENDPOINTY PROFILU (Minimal API)
+// ==========================================
 
+// 1. Pobierz mój profil
+app.MapGet("/api/profile/me", async (UserService service, CancellationToken ct) =>
+{
+    var user = await service.GetCurrentUserProfileAsync(ct);
+    return user is not null ? Results.Ok(user) : Results.NotFound();
+})
+.RequireAuthorization();
+
+// 2. Aktualizuj dane (Imię, Nazwisko, Język)
+app.MapPut("/api/profile/me", async ([FromBody] UpdateUserDto dto, UserService service, CancellationToken ct) =>
+{
+    await service.UpdateCurrentUserProfileAsync(dto, ct);
+    return Results.Ok(new { message = "Dane zaktualizowane" });
+})
+.RequireAuthorization();
+
+// 3. Zmień hasło
+app.MapPut("/api/profile/password", async ([FromBody] ChangePasswordDto dto, UserService service, CancellationToken ct) =>
+{
+    var success = await service.ChangePasswordAsync(dto, ct);
+
+    if (!success)
+    {
+        return Results.BadRequest(new { message = "Obecne hasło jest nieprawidłowe." });
+    }
+
+    return Results.Ok(new { message = "Hasło zostało zmienione." });
+})
+.RequireAuthorization();
 
 
 

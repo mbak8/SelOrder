@@ -8,6 +8,7 @@ import { LoginPage, type LoginResponse } from './common/pages/LoginPage';
 import { ArticlesPage } from './pages/ArticlesPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { OrderDetailsPage } from './pages/OrderDetailsPage';
+import ProfilePage from './common/pages/ProfilePage';
 
 const AppContent = () => {
   const { t, loading } = useTranslations();
@@ -35,7 +36,7 @@ const AppContent = () => {
   if (loading) {
     return (
         <div style={{ height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#666' }}>
-            <h2>⏳ Ładowanie systemu...</h2>
+            <h2>⏳ {t('General.LoadingSystem')}</h2>
         </div>
     );
   }
@@ -58,6 +59,7 @@ const AppContent = () => {
         <Route path="/articles" element={<ArticlesPage />} />
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/orders/:id" element={<OrderDetailsPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </MainLayout>

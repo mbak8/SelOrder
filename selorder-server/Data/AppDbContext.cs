@@ -17,6 +17,7 @@ public class AppDbContext(
     public DbSet<Article> Articles { get; set; } // Wspólne
     public DbSet<UnitTranslation> UnitTranslations { get; set; } // Wspólne
     public DbSet<AppTranslation> AppTranslations { get; set; } // Wspólne
+    public DbSet<Language> Languages { get; set; } // Wspólne
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

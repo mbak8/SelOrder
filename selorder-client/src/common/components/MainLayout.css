@@ -140,53 +140,63 @@
 /* =========================================
    6. WIDOK MOBILNY (Telefony < 768px)
    ========================================= */
+/* =========================================
+   6. WIDOK MOBILNY (Telefony < 768px)
+   ========================================= */
+/* =========================================
+   6. WIDOK MOBILNY (Telefony < 768px)
+   ========================================= */
 @media (max-width: 768px) {
 
-  .layout-body {
-    display: block;
-  }
-  
-  /* Zamiana headerów */
-  .desktop-header { display: none; }
-  
-  .mobile-header {
-    height: 60px;
-    background-color: #ffffff;
-    display: flex;
-    align-items: center;
-    padding: 0 15px;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-    
-    /* ZMIANA 1: Zamiast space-between dajemy flex-start */
-    /* To sprawia, że elementy układają się jeden za drugim od lewej */
-    justify-content: flex-start; 
-    
-    gap: 15px; /* Odstęp między hamburgerem a Logo */
-    
-    z-index: 10;
-    flex-shrink: 0;
-  }
+  /* 1. NAGŁÓWEK - "PRZYKLEJAMY" GO NA STAŁE */
+/* W MainLayout.css - sekcja @media */
 
+.mobile-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  
+  /* ZMIANA: Dodajemy right: 0, żeby sztywno trzymał się obu krawędzi */
+  right: 0;
+  width: auto; /* width: 100% zmieniamy na auto, bo left+right załatwia sprawę */
+  
+  height: 60px;
+  background-color: #ffffff;
+  
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  
+  /* Padding i box-sizing są kluczowe */
+  padding: 0 15px;
+  box-sizing: border-box; 
+  
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  z-index: 900;
+  gap: 15px;
+}
+
+.desktop-header {
+  display: none; 
+}
+  /* Reset elementów w nagłówku (bez zmian logicznych, tylko styl) */
   .hamburger-btn {
     background: none;
     border: none;
     font-size: 24px;
     cursor: pointer;
-    padding: 0; /* Reset paddingu, żeby był bliżej krawędzi */
-    color: #333333;
+    padding: 0;
+    color: #333;
     margin: 0;
     display: flex;
   }
 
-  /* Styl dla tytułu "SelOrder" */
   .mobile-logo-text {
     font-size: 1.2rem;
     font-weight: bold;
     white-space: nowrap;
-    /* Logo jest teraz zaraz za hamburgerem dzięki flex-start */
   }
 
-  /* Styl dla Użytkownika */
   .mobile-user-info {
     font-size: 0.85em;
     color: #666;
@@ -194,69 +204,72 @@
     overflow: hidden;
     text-overflow: ellipsis;
     max-width: 100px;
+    margin-left: auto; /* Dopycha usera do prawej krawędzi */
     text-align: right;
   }
 
-  /* --- Reszta (Sidebar) bez zmian --- */
-/* Sidebar staje się wysuwaną szufladą */
+  /* 2. KONFIGURACJA GŁÓWNEGO CIAŁA (POD HEADEREM) */
+  .layout-body {
+    display: block; 
+    
+    /* KLUCZOWE: Odsunięcie treści w dół o wysokość headera (60px) */
+    padding-top: 60px; 
+    
+    /* Wymuszamy wysokość ekranu, żeby scroll był wewnątrz */
+    height: 100dvh; 
+    width: 100%;
+    overflow: hidden; /* Blokujemy scrollowanie całej strony */
+    box-sizing: border-box;
+  }
+  
+  /* 3. TREŚĆ WŁAŚCIWA (TO ONA MA SIĘ SCROLLOWAĆ) */
+  .content {
+    /* Treść zajmuje 100% dostępnej wysokości pod headerem */
+    height: 100%; 
+    
+    /* Włączamy przewijanie TYLKO tutaj */
+    overflow-y: auto; 
+    -webkit-overflow-scrolling: touch; /* Płynne przewijanie na iPhone */
+    margin:0px;
+    padding: 0px; 
+    width: 100%; 
+    box-sizing: border-box;
+  }
+
+  /* --- SIDEBAR (BEZ ZMIAN, ALE MUSI BYĆ NAD HEADEREM) --- */
   .sidebar {
-/* TO JEST KLUCZOWE: */
-    position: fixed;   /* Wyjmuje element z przepływu dokumentu - znika "duch" */
+    position: fixed;
     top: 0;
     left: 0;
-    
-    width: 280px;      /* Szerokość wysuwanej szuflady */
-    height: 100dvh;    /* Pełna wysokość */
-    z-index: 1000;     /* Musi być nad wszystkim */
-    
+    width: 170px;
+    height: 100dvh;
+    z-index: 1000; /* Sidebar (1000) przykryje Header (900) */
     background-color: #fff;
     box-shadow: 2px 0 10px rgba(0,0,0,0.2);
-    
-    /* Domyślnie schowane */
     transform: translateX(-100%);
     transition: transform 0.3s ease-in-out;
-    
-    /* Flex dla układu wewnątrz menu */
     display: flex;
     flex-direction: column;
   }
-
-  /* ZMIANA 3: To sprawia, że jeśli lista linków jest długa, 
-     to scrolluje się TYLKO ŚRODEK menu, a przycisk Wyloguj jest zawsze widoczny */
+  
+  /* Reszta klas sidebara (bez zmian) */
   .sidebar-nav {
-    flex: 1;            /* Zajmij całe wolne miejsce */
-    overflow-y: auto;   /* Włącz przewijanie, jeśli linki się nie mieszczą */
-    min-height: 0;      /* Ważne dla Firefoxa przy flexboxie */
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
   }
 
-.sidebar-footer {
-  margin-top: auto; /* Dopycha do dołu (to już masz) */
-  border-top: 1px solid #eee;
-  
-  /* --- ZMIANA TUTAJ --- */
-  
-  /* Padding: Góra | Prawo | Dół | Lewo */
-  /* Dajemy 20px z góry/boków, ale OD DOŁU wyliczamy bezpieczny margines */
-  padding: 20px 20px calc(30px + env(safe-area-inset-bottom));
-  
-  /* Dlaczego calc?
-     30px - to sztywny odstęp, żeby przycisk nie dotykał krawędzi.
-     env(safe-area-inset-bottom) - to dodatkowy odstęp na iPhone'ach 
-     (dla tej czarnej kreski do przesuwania aplikacji). 
-  */
-  
-  background-color: #fff; /* Zabezpieczenie tła */
-  flex-shrink: 0;
-}
-
-  .sidebar.open {
-    transform: translateX(0);
+  .sidebar-footer {
+    margin-top: auto;
+    border-top: 1px solid #eee;
+    padding: 20px 20px calc(30px + env(safe-area-inset-bottom));
+    background-color: #fff;
+    flex-shrink: 0;
   }
 
-  .close-btn {
-    display: block; 
-  }
-
+  .sidebar.open { transform: translateX(0); }
+  .close-btn { display: block; }
+  
   .overlay {
     display: block;
     position: fixed;
@@ -265,22 +278,115 @@
     width: 100%;
     height: 100%;
     background: rgba(0, 0, 0, 0.5);
-    z-index: 900;
+    z-index: 950; /* Overlay też nad headerem */
   }
-.content {
-  /* 1. Odstęp od krawędzi telefonu (np. 10px z każdej strony) */
-  padding: 10px; 
-  
-  /* 2. Szerokość: 100% dostępnego miejsca (nie 100vw, bo to powoduje suwak przez pasek przewijania) */
-  width: 100%; 
-  
-  /* 3. To sprawia, że padding jest częścią szerokości, a nie dodatkiem */
-  box-sizing: border-box; 
-  
-  /* 4. Bezpiecznik: jeśli coś wystaje, utnij to */
-  overflow-x: hidden;
-  
-  /* 5. Reset minimalnej szerokości */
-  min-width: 0;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+/* =========================================
+   7. UNIWERSALNE STYLE DLA FORMULARZY I KART
+   (Profil, Szczegóły zamówienia, Edycja)
+   ========================================= */
+
+.details-view-container {
+  max-width: 900px; /* Ograniczamy szerokość, żeby na PC nie było za szeroko */
+  margin: 0 auto;   /* Centrowanie na środku */
+  padding: 0 0 40px 0;
+}
+
+.section-title {
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* Wygląd Karty (identyczny jak DataGrid na mobile) */
+.data-card {
+  background-color: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+  padding: 25px;
+  margin-bottom: 20px;
+}
+
+.data-card h3 {
+  margin-top: 0;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 15px;
+  margin-bottom: 20px;
+  color: #4ab26b; /* Twój zielony */
+}
+
+/* Pola formularza */
+.form-row {
+  margin-bottom: 15px;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #555;
+  font-size: 0.9rem;
+}
+
+.form-input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 1rem;
+  box-sizing: border-box; /* Kluczowe dla responsywności */
+  transition: border-color 0.2s;
+}
+
+.form-input:focus {
+  border-color: #4ab26b;
+  outline: none;
+}
+
+/* Przyciski akcji */
+.action-btn {
+  background-color: #4ab26b;
+  color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.action-btn:hover {
+  background-color: #3d9458;
+}
+
+/* Responsywność formularza */
+@media (min-width: 768px) {
+  /* Na komputerze pola mogą być w dwóch kolumnach */
+  .form-grid-2 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+  }
 }
