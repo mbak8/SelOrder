@@ -30,6 +30,9 @@ public class User : ITenantAware
     public string? LastName { get; set; }
     [MaxLength(125)]
     public string? Email { get; set; }
+
+    public string? ResetToken { get; set; }
+    public DateTime? ResetTokenExpires { get; set; }
 }
 
 [Table("OrderItems")]

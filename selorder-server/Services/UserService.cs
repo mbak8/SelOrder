@@ -79,4 +79,56 @@ public class UserService(AppDbContext db, IAppUserContext userContext)
 
         return true;
     }
+
+
+    // W klasie UserService
+
+    // KROK A: Rozpoczęcie procedury (Generuje token i wysyła maila)
+    public async Task InitiatePasswordResetAsync(string email, string frontendUrlBase, EmailService emailService)
+    {
+        // Szukamy użytkownika po mailu
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
+
+        // SECURITY: Jeśli user nie istnieje, nie rzucamy błędu, żeby nie zdradzać, czy mail jest w bazie.
+        // Po prostu kończymy funkcję.
+        if (user == null) return;
+
+        // Generujemy Token (GUID)
+        var token = Guid.NewGuid().ToString();
+
+        // Zapisujemy w bazie (ważny 1h)
+        user.ResetToken = token;
+        user.ResetTokenExpires = DateTime.UtcNow.AddHours(1);
+
+        await db.SaveChangesAsync();
+
+        // Budujemy link (to musi być link do REACTA, nie do API!)
+        // np. http://localhost:5173/reset-password?token=abc-123
+        string link = $"{frontendUrlBase}/reset-password?token={token}";
+
+        // Wysyłamy maila
+        await emailService.SendPasswordResetEmailAsync(email, link);
+    }
+
+    // KROK B: Finalizacja (Przyjmuje token i nowe hasło)
+    public async Task<bool> CompletePasswordResetAsync(string token, string newPassword)
+    {
+        var user = await db.Users.FirstOrDefaultAsync(u => u.ResetToken == token);
+
+        // Sprawdzamy czy token istnieje i czy nie wygasł
+        if (user == null || user.ResetTokenExpires < DateTime.UtcNow)
+        {
+            return false; // Token nieważny
+        }
+
+        // Zmieniamy hasło
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+
+        // Czyścimy token, żeby nie można go było użyć drugi raz
+        user.ResetToken = null;
+        user.ResetTokenExpires = null;
+
+        await db.SaveChangesAsync();
+        return true;
+    }
 }
