@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom'; // <--- 1. IMPORT
 import { apiClient } from '../../api/client';
 import { useTranslations } from '../context/TranslationContext';
 import logo from '../../assets/agroselnet-logo-color.svg';
@@ -15,7 +16,6 @@ interface LoginPageProps {
 }
 
 export const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
-  // 1. Pobieramy changeLanguage oraz obecny język z kontekstu
   const { t, changeLanguage, language } = useTranslations();
   
   const [login, setLogin] = useState("");
@@ -34,16 +34,11 @@ export const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
         password: password
       });
 
-      // 2. KLUCZOWE: Nadpisujemy język przeglądarki językiem z profilu użytkownika
-      // Dzięki temu po wejściu do aplikacji user widzi swój preferowany język
       changeLanguage(response.data.language);
-
-      // Przekazujemy dane dalej
       onLoginSuccess(response.data);
       
     } catch (err) {
       console.error(err);
-      // Używamy klucza tłumaczenia dla błędu
       setError(t('Login.ErrorCredential')); 
     } finally {
       setIsSubmitting(false);
@@ -103,13 +98,24 @@ export const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
             />
           </div>
 
+          {/* --- 2. NOWY LINK DO RESETU HASŁA --- */}
+          <div style={{ textAlign: 'right', marginTop: -5 }}>
+            <Link 
+              to="/forgot-password" 
+              style={{ fontSize: '0.85em', color: '#4ab26b', textDecoration: 'none' }}
+            >
+              {t('Login.ForgotPassword') || 'Zapomniałeś hasła?'}
+            </Link>
+          </div>
+          {/* ----------------------------------- */}
+
           <button 
             type="submit" 
             disabled={isSubmitting}
             style={{ 
               marginTop: 10,
               padding: 12, 
-              background: isSubmitting ? '#ccc' : '#4ab26b', // Twój zielony kolor
+              background: isSubmitting ? '#ccc' : '#4ab26b',
               color: 'white', 
               border: 'none', 
               borderRadius: 4, 
@@ -127,12 +133,12 @@ export const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
           </div>
         )}
 
-        {/* 3. PRZEŁĄCZNIK JĘZYKA (Dla niezalogowanych) */}
+        {/* PRZEŁĄCZNIK JĘZYKA */}
         <div style={{ marginTop: 30, borderTop: '1px solid #eee', paddingTop: 15, textAlign: 'center' }}>
             <span style={{ fontSize: '0.85em', color: '#888', marginRight: 10 }}>Language / Język:</span>
             <select 
-              value={language} // Bierzemy wartość z Contextu
-              onChange={(e) => changeLanguage(e.target.value)} // Zmieniamy w Context (co przeładuje teksty)
+              value={language} 
+              onChange={(e) => changeLanguage(e.target.value)} 
               style={{ padding: '5px', borderRadius: '4px', border: '1px solid #ccc' }}
             >
               <option value="PL">Polski</option>

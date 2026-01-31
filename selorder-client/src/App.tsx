@@ -9,6 +9,8 @@ import { ArticlesPage } from './pages/ArticlesPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { OrderDetailsPage } from './pages/OrderDetailsPage';
 import ProfilePage from './common/pages/ProfilePage';
+import { ForgotPasswordPage } from './common/pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './common/pages/ResetPasswordPage';
 
 const AppContent = () => {
   const { t, loading } = useTranslations();
@@ -41,17 +43,23 @@ const AppContent = () => {
     );
   }
 
-  // 2. Jeśli NIE zalogowany -> Pokaż Login Page
+  // 2. Jeśli NIE zalogowany -> Pokaż trasy publiczne (Login, Reset hasła)
   if (!userData) {
     return (
       <Routes>
-        {/* Każda ścieżka przekieruje na LoginPage */}
-        <Route path="*" element={<LoginPage onLoginSuccess={handleLoginSuccess} />} />
+        <Route path="/login" element={<LoginPage onLoginSuccess={handleLoginSuccess} />} />
+        
+        {/* --- NOWE TRASY DLA NIEZALOGOWANYCH --- */}
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password" element={<ResetPasswordPage />} />
+        
+        {/* Każda inna ścieżka przekieruje na /login */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     );
   }
 
-  // 3. Jeśli ZALOGOWANY -> Pokaż aplikację
+  // 3. Jeśli ZALOGOWANY -> Pokaż aplikację wewnątrz Layoutu
   return (
     <MainLayout onLogout={handleLogout} username={userData.login} t={t}>
       <Routes>
@@ -60,6 +68,11 @@ const AppContent = () => {
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/orders/:id" element={<OrderDetailsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        
+        {/* Jeśli zalogowany wejdzie na login/reset, przekieruj do aplikacji */}
+        <Route path="/login" element={<Navigate to="/" />} />
+        <Route path="/forgot-password" element={<Navigate to="/" />} />
+        
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
     </MainLayout>

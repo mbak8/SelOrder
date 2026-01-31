@@ -77,6 +77,7 @@ builder.Services.AddCors(options =>
 builder.Services.AddScoped<ArticleService>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<EmailService>();
 
 var app = builder.Build();
 
@@ -151,7 +152,36 @@ app.MapPost("/api/login", async (
         TenantId = user.TenantId
     });
 });
+// 1. User prosi o reset (wysyłamy maila)
+app.MapPost("/api/auth/forgot-password", async (
+    [FromBody] ForgotPasswordRequest req,
+    UserService userService,
+    EmailService emailService) =>
+{
+    // Tutaj wpisz adres swojego Frontendu (Reacta)
+    string frontendUrl = "http://localhost:5173";
 
+    await userService.InitiatePasswordResetAsync(req.Email, frontendUrl, emailService);
+
+    // Zawsze zwracamy OK, nawet jak maila nie ma w bazie (Security)
+    return Results.Ok(new { message = "Jeśli mail istnieje, wysłaliśmy instrukcję." });
+})
+.AllowAnonymous();
+
+
+// 2. User klika w link i ustawia nowe hasło
+app.MapPost("/api/auth/reset-password", async (
+    [FromBody] ResetPasswordRequest req,
+    UserService userService) =>
+{
+    var success = await userService.CompletePasswordResetAsync(req.Token, req.NewPassword);
+
+    if (!success)
+        return Results.BadRequest(new { message = "Link jest nieważny lub wygasł." });
+
+    return Results.Ok(new { message = "Hasło zostało zmienione. Możesz się zalogować." });
+})
+.AllowAnonymous();
 
 
 
