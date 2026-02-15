@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
+// Zwróć uwagę na poprawną ścieżkę do Twojego kontekstu, dostosuj ją jeśli jest inna!
+import { useTranslations } from '../context/TranslationContext'; 
 import './MainLayout.css';
 import logo from '../../assets/agroselnet-logo-color.svg';
 
@@ -13,6 +15,10 @@ interface MainLayoutProps {
 export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps) => {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // 1. Pobieramy stan i funkcję do zmiany języka z Contextu
+  const { language, changeLanguage } = useTranslations(); 
+  
   const closeMenu = () => setMobileMenuOpen(false);
 
   return (
@@ -43,7 +49,6 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
             <span style={{ color: '#4ab26b' }}>Sel</span>
             <span style={{ color: '#000000' }}>Order</span>
          </div>
-
       </div>      
 
       {/* 3. OVERLAY (Tylko mobile) */}
@@ -78,33 +83,37 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
             >
               📦 {t('Menu.Articles')}
             </NavLink>
-
-{/*
-            <NavLink 
-              to="/users" 
-              className={({ isActive }) => isActive ? "menu-item active" : "menu-item"}
-              onClick={closeMenu}
-            >
-              👤 {t('Menu.Users')}
-            </NavLink>
-*/}
-
-
           </nav>
 
           <div className="sidebar-footer">
+            
+
+
+
             <NavLink 
               to="/profile" 
               className={({ isActive }) => isActive ? "menu-item active" : "menu-item"}
               onClick={closeMenu}
               // Dodajemy margines, żeby oddzielić go od przycisku Wyloguj
-              style={{ marginBottom: '10px' }} 
             >
-              ⚙️ Mój Profil
+              ⚙️ {t('General.Profile') || 'Mój Profil'}
             </NavLink>
 
+                    <div style={{ marginBottom: 15, borderTop: '1px solid #eee', textAlign: 'center' }}>
+            <select 
+              value={language} 
+              onChange={(e) => changeLanguage(e.target.value)} 
+              style={{ padding: '5px', borderRadius: '4px', border: '1px solid #ccc' }}
+            >
+              <option value="PL">Polski</option>
+              <option value="EN">English</option>
+              <option value="DE">Deutsch</option>
+              <option value="RU">Русский</option>
+            </select>
+        </div> 
+
             <button onClick={onLogout} className="logout-btn">
-              Wyloguj
+              {t('General.Logout') || 'Wyloguj'}
             </button>
           </div>
         </aside>
