@@ -18,8 +18,12 @@ const AppContent = () => {
   // Stan autoryzacji
   const [userData, setUserData] = useState<LoginResponse | null>(() => {
     const token = localStorage.getItem('token');
-    // Tu uproszczenie - normalnie dekodujemy token lub trzymamy usera w localStorage
-    return token ? { login: 'User', token, language: 'PL', tenantId: 1 } : null;
+    
+    // --- ZMIANA 1: Pobieramy zapisany login z localStorage, zamiast wpisywać 'User' na sztywno
+    const savedLogin = localStorage.getItem('login') || 'Użytkownik'; 
+    
+    // Używamy zmiennej savedLogin
+    return token ? { login: savedLogin, token, language: 'PL', tenantId: 1 } : null;
   });
 
   // Funkcja, którą przekażemy do LoginPage
@@ -27,11 +31,17 @@ const AppContent = () => {
     console.log("Zalogowano pomyślnie:", data);
     setUserData(data);
     localStorage.setItem('token', data.token);
+    
+    // --- ZMIANA 2: Zapisujemy prawdziwy login do localStorage podczas logowania
+    localStorage.setItem('login', data.login); 
   };
 
   const handleLogout = () => {
     setUserData(null);
     localStorage.removeItem('token');
+    
+    // --- ZMIANA 3: Czyścimy login z pamięci przy wylogowaniu
+    localStorage.removeItem('login'); 
   };
 
   // 1. Ekran ładowania (Translation Context)
