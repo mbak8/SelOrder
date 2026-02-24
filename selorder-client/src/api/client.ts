@@ -1,14 +1,13 @@
 import axios from 'axios';
 
 export const apiClient = axios.create({
-  // Pamiętaj o swoim adresie IP, jeśli testujesz na telefonie
-  baseURL: import.meta.env.VITE_API_URL, // Vite sam to podstawi
+  // baseURL zostało całkowicie usunięte - używamy ścieżek względnych (profesjonalny wzorzec)
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// 1. Interceptor ŻĄDAŃ (To już miałeś - dodaje token do wysyłki)
+// 1. Interceptor ŻĄDAŃ (dodaje token do wysyłki)
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
   if (token) {
@@ -19,7 +18,7 @@ apiClient.interceptors.request.use((config) => {
   return Promise.reject(error);
 });
 
-// 2. NOWOŚĆ: Interceptor ODPOWIEDZI (Obsługa błędów 401)
+// 2. Interceptor ODPOWIEDZI (Obsługa błędów 401)
 apiClient.interceptors.response.use(
   (response) => {
     // Jeśli sukces (200), po prostu oddaj dane
@@ -32,6 +31,7 @@ apiClient.interceptors.response.use(
       
       // A. Wyczyść śmieci
       localStorage.removeItem('token');
+      localStorage.removeItem('login'); // Dodane zgodnie z wcześniejszymi ustaleniami
       
       // B. Jeśli nie jesteśmy już na stronie logowania, przekieruj nas tam
       if (window.location.pathname !== '/login') {
@@ -40,7 +40,7 @@ apiClient.interceptors.response.use(
       }
     }
     
-    // Zwróć błąd dalej, żeby komponent (np. OrdersPage) mógł obsłużyć inne błędy
+    // Zwróć błąd dalej, żeby komponent mógł go obsłużyć
     return Promise.reject(error);
   }
 );
