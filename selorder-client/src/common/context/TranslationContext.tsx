@@ -23,18 +23,21 @@ export const TranslationProvider = ({ children }: { children: ReactNode }) => {
   // 1. Inicjalizacja: LocalStorage -> Przeglądarka -> Domyślny
   const [language, setLanguageState] = useState<string>(() => {
     const saved = localStorage.getItem('language');
-    if (saved) return saved;
-    return getBrowserLanguage();
-  });
+    const initialLang = saved || getBrowserLanguage();
+    apiClient.defaults.headers.common['Accept-Language'] = initialLang;
+    
+    return initialLang;
+});
 
   
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
-  // 2. Funkcja, którą będziemy wywoływać z innych komponentów (np. z Profilu)
+  // 2. Funkcja zmiany języka
   const changeLanguage = (newLang: string) => {
     setLanguageState(newLang);
     localStorage.setItem('language', newLang); // Zapisujemy, żeby po odświeżeniu strony język został
+apiClient.defaults.headers.common['Accept-Language'] = newLang;
   };
 
   // 3. Ten useEffect odpali się TERAZ przy każdej zmianie zmiennej 'language'
@@ -48,7 +51,7 @@ export const TranslationProvider = ({ children }: { children: ReactNode }) => {
         setTranslations(response.data);
         
         // Opcjonalnie: Jeśli API wymaga nagłówka Accept-Language
-        apiClient.defaults.headers.common['Accept-Language'] = language;
+        //apiClient.defaults.headers.common['Accept-Language'] = language;
         
       } catch (err) {
         console.error("Błąd pobierania tłumaczeń", err);

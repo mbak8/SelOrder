@@ -50,10 +50,10 @@ public class ArticleService(AppDbContext db, IAppUserContext userContext)
 
 
     public async Task<PagedResult<ArticleDto>> GetArticlesPagedAsync(
-    int pageNumber,
-    int pageSize,
-    Dictionary<string, string> filters,
-    CancellationToken ct = default)
+        int pageNumber,
+        int pageSize,
+        Dictionary<string, string> filters,
+        CancellationToken ct = default)
     {
         var userLanguage = userContext.LanguageCode ?? "PL";
         var query = db.Articles.AsNoTracking().AsQueryable();
@@ -66,9 +66,7 @@ public class ArticleService(AppDbContext db, IAppUserContext userContext)
         // 2. Sortowanie (bez zmian)
         query = query.OrderBy(a => a.Code);
 
-        // 3. --- ZMIANA: Logika "Wyłącz Stronicowanie" ---
-        // Jeśli pageSize > 0 -> tniemy na strony.
-        // Jeśli pageSize == -1 -> bierzemy wszystko.
+        // 3. Stronicowanie
         if (pageSize > 0)
         {
             query = query
@@ -76,12 +74,22 @@ public class ArticleService(AppDbContext db, IAppUserContext userContext)
                 .Take(pageSize);
         }
 
-        // 4. Projekcja (Select) i pobranie danych
+        // 4. Projekcja (Select) i pobranie danych z tłumaczeniami
         var items = await query
             .Select(a => new ArticleDto(
-                 // ... Twoje mapowanie pól (bez zmian) ...
-                 a.ArticleId, a.Code, a.Name, a.ERPId,
-                 a.QuantityAvailable ?? 0m, a.QuantityReserved ?? 0m,
+                 a.ArticleId,
+                 a.Code,
+
+                 // --- ZMIANA: Tłumaczenie nazwy artykułu ---
+                 a.ArticlesTranslations
+                     .Where(t => t.LanguageCode == userLanguage)
+                     .Select(t => t.Name)
+                     .FirstOrDefault() ?? a.Name,
+
+                 a.ERPId,
+                 a.QuantityAvailable ?? 0m,
+                 a.QuantityReserved ?? 0m,
+
                  a.Unit != null ? a.Unit.Code : "",
                  a.Unit != null
                      ? (a.Unit.Translations.Where(t => t.LanguageCode == userLanguage).Select(t => t.Name).FirstOrDefault() ?? a.Unit.InternalName)
