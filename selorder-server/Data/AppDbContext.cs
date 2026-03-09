@@ -16,6 +16,7 @@ public class AppDbContext(
     public DbSet<OrderItem> OrderItems { get; set; }
     public DbSet<Article> Articles { get; set; } // Wspólne
     public DbSet<UnitTranslation> UnitTranslations { get; set; } // Wspólne
+    public DbSet<ArticlesTranslation> ArticlesTranslations { get; set; } // Wspólne
     public DbSet<AppTranslation> AppTranslations { get; set; } // Wspólne
     public DbSet<Language> Languages { get; set; } // Wspólne
 

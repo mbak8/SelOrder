@@ -134,6 +134,35 @@ public class UnitTranslation
     public Language? Language { get; set; }
 }
 
+[Table("ArticlesTranslations")]
+public class ArticlesTranslation
+{
+    [Key]
+    public int TranslationId { get; set; }
+
+    // Klucz obcy do Unit
+    public int ArticleId { get; set; }
+
+    // SQL: [char](2) NOT NULL
+    [StringLength(2)]
+    [Column(TypeName = "char(2)")]
+    public required string LanguageCode { get; set; }
+
+    [MaxLength(200)]
+    public required string Name { get; set; }
+
+    // Relacja zwrotna do Unit (nawigacja)
+    [ForeignKey(nameof(ArticleId))]
+    public Article? Article { get; set; }
+
+    // Relacja do Language (opcjonalnie, jeśli potrzebujesz)
+    [ForeignKey(nameof(LanguageCode))]
+    public Language? Language { get; set; }
+
+    
+}
+
+[Table("Articles")]
 public class Article
 {
     [Key]
@@ -158,6 +187,8 @@ public class Article
 
     [ForeignKey(nameof(UnitId))]
     public Unit? Unit { get; set; }
+
+    public virtual ICollection<ArticlesTranslation> ArticlesTranslations { get; set; } = [];
 }
 
 [Table("Languages")]

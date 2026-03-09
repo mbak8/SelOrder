@@ -5,3 +5,6 @@
 /selorder-server/obj
 /selorder-server/.vs
 /selorder-server/.vs
+/selorder-integration/selorder-integration/obj
+/selorder-integration/selorder-integration/bin
+/selorder-integration/.vs
