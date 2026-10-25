@@ -6,6 +6,7 @@ export interface Column<T> {
   key: keyof T;
   header: string;
   width?: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   render?: (value: any, item: T) => ReactNode;
 }
 
@@ -29,7 +30,7 @@ interface DataGridProps<T> {
   onPageChange?: (newPage: number) => void;
 }
 
-export const DataGrid = <T extends { id: number | string }>({ 
+export const DataGrid = <T,>({ 
   data, 
   columns, 
   isLoading, 

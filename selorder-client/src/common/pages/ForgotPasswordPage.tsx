@@ -5,7 +5,7 @@ import { useTranslations } from '../context/TranslationContext';
 import logo from '../../assets/agroselnet-logo-color.svg';
 
 export const ForgotPasswordPage = () => {
-  const { t, language, changeLanguage } = useTranslations();
+  const { language, changeLanguage } = useTranslations();
 
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
