@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { apiClient } from '../../api/client';
 import logo from '../../assets/agroselnet-logo-color.svg';
@@ -10,14 +10,9 @@ export const ResetPasswordPage = () => {
 
   const [passwords, setPasswords] = useState({ new: '', confirm: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
-
-  // Jeśli brak tokena w URL, wyświetlamy błąd od razu
-  useEffect(() => {
-    if (!token) {
-        setMessage({ text: 'Brak tokena resetującego. Link może być nieprawidłowy.', type: 'error' });
-    }
-  }, [token]);
+  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(() =>
+    token ? null : { text: 'Brak tokena resetującego. Link może być nieprawidłowy.', type: 'error' }
+  );
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

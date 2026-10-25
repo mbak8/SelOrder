@@ -74,6 +74,7 @@ apiClient.defaults.headers.common['Accept-Language'] = newLang;
   );
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useTranslations = () => {
   const context = useContext(TranslationContext);
   if (!context) {

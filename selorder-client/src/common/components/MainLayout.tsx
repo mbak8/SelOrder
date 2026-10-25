@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink } from 'react-router-dom';
 // Zwróć uwagę na poprawną ścieżkę do Twojego kontekstu, dostosuj ją jeśli jest inna!
 import { useTranslations } from '../context/TranslationContext'; 
 import './MainLayout.css';
@@ -13,7 +13,7 @@ interface MainLayoutProps {
 }
 
 export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps) => {
-  const navigate = useNavigate();
+
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
   
   // 1. Pobieramy stan i funkcję do zmiany języka z Contextu

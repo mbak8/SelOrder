@@ -22,25 +22,36 @@ const ProfilePage: React.FC = () => {
 
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{text: string, type: 'success'|'error'} | null>(null);
-  const { t, changeLanguage } = useTranslations();
+  const { changeLanguage } = useTranslations();
 
   // Pobranie danych przy wejściu
   useEffect(() => {
-    loadData();
-  }, []);
+    let ignore = false;
+    const loadData = async () => {
+      try {
+        const data = await profileApi.getProfile();
+        if (!ignore) {
+          setProfile(data);
+        }
+      } catch (err) {
+        console.error(err);
+        // Fallback jeśli API nie działa, żebyś widział formularz
+        if (!ignore) {
+          setProfile({ userId: 0, login: 'jan', firstName: 'Jan', lastName: 'Kowalski', email: 'jan@test.pl', languageCode: 'PL' });
+        }
+      } finally {
+        if (!ignore) {
+          setLoading(false);
+        }
+      }
+    };
 
-  const loadData = async () => {
-    try {
-      const data = await profileApi.getProfile();
-      setProfile(data);
-    } catch (err) {
-      console.error(err);
-      // Fallback jeśli API nie działa, żebyś widział formularz
-      setProfile({ userId: 0, login: 'jan', firstName: 'Jan', lastName: 'Kowalski', email: 'jan@test.pl', languageCode: 'PL' });
-    } finally {
-      setLoading(false);
-    }
-  };
+    loadData();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
 
   // Zapis danych
   const handleSaveProfile = async (e: React.FormEvent) => {
@@ -50,7 +61,7 @@ const ProfilePage: React.FC = () => {
       await profileApi.updateProfile(profile);
       changeLanguage(profile.languageCode);
       setMessage({ text: 'Dane zapisane pomyślnie.', type: 'success' });
-    } catch (err) {
+    } catch {
       setMessage({ text: 'Błąd zapisu danych.', type: 'error' });
     }
   };
@@ -72,7 +83,7 @@ const ProfilePage: React.FC = () => {
       });
       setMessage({ text: 'Hasło zostało zmienione.', type: 'success' });
       setPasswordData({ current: '', new: '', confirm: '' });
-    } catch (err) {
+    } catch {
       setMessage({ text: 'Nie udało się zmienić hasła (sprawdź stare hasło).', type: 'error' });
     }
   };
