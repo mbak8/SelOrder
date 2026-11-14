@@ -19,6 +19,12 @@ public class Tenant
     [MaxLength(255)]
     public required string CompanyName { get; set; }
 
+    // Krótki kod klienta używany w numerach zamówień (np. ZS/AGRO/2026/001).
+    // Tylko wielkie litery A-Z i cyfry – pilnuje tego constraint CK_Tenants_Code w bazie.
+    [MaxLength(10)]
+    [RegularExpression("^[A-Z0-9]+$")]
+    public required string Code { get; set; }
+
     public bool IsActive { get; set; } = true;
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
@@ -103,6 +109,22 @@ public class Order : ITenantAware
 
     // Relacja do pozycji zamówienia
     public ICollection<OrderItem> OrderItems { get; set; } = [];
+}
+
+// Licznik numerów zamówień – osobna numeracja dla każdego klienta i roku.
+// Zwiększany wyłącznie przez OrderNumberGenerator (atomowy MERGE w SQL).
+[Table("OrderNumberCounters")]
+[PrimaryKey(nameof(TenantId), nameof(Year))]
+public class OrderNumberCounter
+{
+    public Guid TenantId { get; set; }
+
+    public int Year { get; set; }
+
+    public int LastNumber { get; set; }
+
+    [ForeignKey(nameof(TenantId))]
+    public Tenant? Tenant { get; set; }
 }
 
 [Table("OrderItems")]

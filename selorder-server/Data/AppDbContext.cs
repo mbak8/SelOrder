@@ -15,6 +15,7 @@ public class AppDbContext(
     public DbSet<User> Users { get; set; }
     public DbSet<Order> Orders { get; set; }
     public DbSet<OrderItem> OrderItems { get; set; }
+    public DbSet<OrderNumberCounter> OrderNumberCounters { get; set; }
     public DbSet<Article> Articles { get; set; }
     public DbSet<ArticlesTranslation> ArticlesTranslations { get; set; }
     public DbSet<Unit> Units { get; set; }
@@ -46,6 +47,10 @@ public class AppDbContext(
 
         modelBuilder.Entity<Order>()
             .HasIndex(o => new { o.TenantId, o.OrderNumber })
+            .IsUnique();
+
+        modelBuilder.Entity<Tenant>()
+            .HasIndex(t => t.Code)
             .IsUnique();
 
         modelBuilder.Entity<User>()

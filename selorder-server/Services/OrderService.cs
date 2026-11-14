@@ -1,12 +1,41 @@
 ﻿using Data;
 using DTOs;
+using Entities;
 using Microsoft.EntityFrameworkCore;
 using SelOrderServer.Extensions;
 
 namespace Services;
 
-public class OrderService(AppDbContext db, IAppUserContext userContext)
+public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNumberGenerator numberGenerator)
 {
+    // Tworzy nowe, puste zamówienie (status "W opracowaniu") i od razu nadaje mu numer
+    public async Task<OrderCreatedDto> CreateOrderAsync(CancellationToken ct = default)
+    {
+        if (userContext.TenantId is not Guid tenantId || userContext.UserId is not int userId)
+            throw new UnauthorizedAccessException("Brak kontekstu użytkownika.");
+
+        // Licznik i zamówienie w jednej transakcji – jeśli zapis się nie uda, numer nie przepada
+        await using var tx = await db.Database.BeginTransactionAsync(ct);
+
+        // Rok liczymy wg czasu lokalnego serwera, żeby zamówienie z 1 stycznia po północy
+        // nie dostało numeru z poprzedniego roku (OrderDate jest w UTC)
+        var number = await numberGenerator.NextAsync(tenantId, DateTime.Now.Year, ct);
+
+        var order = new Order
+        {
+            TenantId = tenantId,
+            UserId = userId,
+            OrderNumber = number,
+            Status = OrderStatus.InPreparation
+        };
+
+        db.Orders.Add(order);
+        await db.SaveChangesAsync(ct);
+        await tx.CommitAsync(ct);
+
+        return new OrderCreatedDto(order.OrderId, order.OrderNumber);
+    }
+
     public async Task<PagedResult<OrderDto>> GetOrdersPagedAsync(
         int pageNumber,
         int pageSize,

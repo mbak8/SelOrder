@@ -36,6 +36,7 @@ builder.Services.AddTransient<IResend, ResendClient>();
 
 builder.Services.AddScoped<TranslationService>();
 builder.Services.AddScoped<ArticleService>();
+builder.Services.AddScoped<OrderNumberGenerator>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<EmailService>();
@@ -199,6 +200,14 @@ app.MapGet("/api/orders", async (OrderService service, HttpContext context) =>
         .ToDictionary(q => q.Key, q => q.Value.ToString());
 
     return await service.GetOrdersPagedAsync(page, pageSize, filters);
+})
+.RequireAuthorization();
+
+// Tworzy nowe, puste zamówienie z nadanym numerem (ZS/{KOD}/{ROK}/{NR})
+app.MapPost("/api/orders", async (OrderService service) =>
+{
+    var created = await service.CreateOrderAsync();
+    return Results.Created($"/api/orders/{created.Id}", created);
 })
 .RequireAuthorization();
 

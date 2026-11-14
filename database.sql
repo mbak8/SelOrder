@@ -170,6 +170,23 @@ PRIMARY KEY CLUSTERED
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 ) ON [PRIMARY]
 GO
+/****** Object:  Table [dbo].[OrderNumberCounters] ******/
+-- Licznik numerów zamówień: osobna numeracja dla każdego klienta (Tenanta) i roku
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[OrderNumberCounters](
+	[TenantId] [uniqueidentifier] NOT NULL,
+	[Year] [int] NOT NULL,
+	[LastNumber] [int] NOT NULL,
+CONSTRAINT [PK_OrderNumberCounters] PRIMARY KEY CLUSTERED
+(
+	[TenantId] ASC,
+	[Year] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
 /****** Object:  Table [dbo].[Orders]    Script Date: 25.10.2026 21:31:51 ******/
 SET ANSI_NULLS ON
 GO
@@ -201,7 +218,8 @@ CREATE TABLE [dbo].[Tenants](
 	[CompanyName] [nvarchar](255) NOT NULL,
 	[IsActive] [bit] NOT NULL,
 	[CreatedAt] [datetime2](7) NOT NULL,
-PRIMARY KEY CLUSTERED 
+	[Code] [nvarchar](10) NOT NULL,
+PRIMARY KEY CLUSTERED
 (
 	[TenantId] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
@@ -332,6 +350,15 @@ CREATE UNIQUE NONCLUSTERED INDEX [UQ_Orders_Tenant_OrderNumber] ON [dbo].[Orders
 GO
 SET ANSI_PADDING ON
 GO
+/****** Object:  Index [UQ_Tenants_Code] ******/
+-- Krótki kod klienta używany w numerach zamówień (np. ZS/AGRO/2026/001)
+CREATE UNIQUE NONCLUSTERED INDEX [UQ_Tenants_Code] ON [dbo].[Tenants]
+(
+	[Code] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+SET ANSI_PADDING ON
+GO
 /****** Object:  Index [UQ_UnitTranslations_Unit_Lang]    Script Date: 25.10.2026 21:31:51 ******/
 CREATE UNIQUE NONCLUSTERED INDEX [UQ_UnitTranslations_Unit_Lang] ON [dbo].[UnitTranslations]
 (
@@ -423,6 +450,14 @@ REFERENCES [dbo].[Orders] ([OrderId])
 ON DELETE CASCADE
 GO
 ALTER TABLE [dbo].[OrderItems] CHECK CONSTRAINT [FK_OrderItems_Orders]
+GO
+-- Kod klienta: tylko wielkie litery A-Z i cyfry (bez polskich znaków i separatorów, bo trafia do numeru zamówienia)
+ALTER TABLE [dbo].[Tenants]  WITH CHECK ADD  CONSTRAINT [CK_Tenants_Code] CHECK  ((len([Code])>(0) AND NOT [Code] like '%[^A-Z0-9]%' COLLATE Latin1_General_BIN))
+GO
+ALTER TABLE [dbo].[Tenants] CHECK CONSTRAINT [CK_Tenants_Code]
+GO
+ALTER TABLE [dbo].[OrderNumberCounters]  WITH CHECK ADD  CONSTRAINT [FK_OrderNumberCounters_Tenants] FOREIGN KEY([TenantId])
+REFERENCES [dbo].[Tenants] ([TenantId])
 GO
 ALTER TABLE [dbo].[Orders]  WITH CHECK ADD  CONSTRAINT [FK_Orders_Tenants] FOREIGN KEY([TenantId])
 REFERENCES [dbo].[Tenants] ([TenantId])
