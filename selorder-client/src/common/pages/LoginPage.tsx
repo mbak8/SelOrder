@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom'; // <--- 1. IMPORT
+import { Link } from 'react-router'; // <--- 1. IMPORT
 import { apiClient } from '../../api/client';
 import { useTranslations } from '../context/TranslationContext';
 import logo from '../../assets/agroselnet-logo-color.svg';
@@ -40,7 +40,7 @@ export const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
       
     } catch (err) {
       console.error(err);
-      setError(t('Auth.Login.ErrorCredential')); 
+      setError(t('Login.ErrorCredential')); 
     } finally {
       setIsSubmitting(false);
     }
@@ -69,10 +69,11 @@ export const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
           <div>
             <label style={{ display: 'block', marginBottom: 5, fontSize: '0.9em', color: 'var(--color-on-surface-variant)' }}>
-              {t('Auth.Login.Username')}
+              {t('Login.Username')}
             </label>
             <input 
               type="text" 
+              autoComplete="username"
               value={login} 
               onChange={e => setLogin(e.target.value)} 
               style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--color-outline-variant)', boxSizing: 'border-box', background: 'var(--color-surface-container-lowest)', color: 'var(--color-on-surface)' }}
@@ -82,7 +83,7 @@ export const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
 
           <div>
             <label style={{ display: 'block', marginBottom: 5, fontSize: '0.9em', color: 'var(--color-on-surface-variant)' }}>
-              {t('Auth.Login.Password')}
+              {t('Login.Password')}
             </label>
             <input 
               type="password" 
@@ -98,7 +99,7 @@ export const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
               to="/forgot-password" 
               style={{ fontSize: '0.85em', color: 'var(--color-primary)', textDecoration: 'none' }}
             >
-              {t('Auth.Login.ForgotPassword')}
+              {t('Login.ForgotPassword')}
             </Link>
           </div>
 
@@ -116,7 +117,7 @@ export const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
               fontWeight: 'bold'
             }}
           >
-            {isSubmitting ? t('Common.Loading') : t('Auth.Login.Submit')}
+            {isSubmitting ? t('Login.Loading') : t('Login.Submit')}
           </button>
         </form>
 
@@ -128,7 +129,7 @@ export const LoginPage = ({ onLoginSuccess }: LoginPageProps) => {
 
         <div style={{ marginTop: 30, borderTop: '1px solid var(--color-outline-variant)', paddingTop: 15, textAlign: 'center' }}>
             <span style={{ fontSize: '0.85em', color: 'var(--color-on-surface-variant)', marginRight: 10 }}>
-                {t('Common.LanguageLabel')}
+                {t('Common.LanguageLabel', 'Język')}
             </span>
             <select 
               value={language} 

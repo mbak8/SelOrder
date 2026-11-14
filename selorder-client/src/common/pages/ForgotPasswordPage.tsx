@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link } from 'react-router';
 import { apiClient } from '../../api/client';
 import { useTranslations } from '../context/TranslationContext';
 import logo from '../../assets/agroselnet-logo-color.svg';

@@ -16,6 +16,9 @@ var options = new WebApplicationOptions
 
 var builder = WebApplication.CreateBuilder(options);
 
+// Sekrety (connection string, JWT, Resend) trzymamy w appsettings.Local.json – plik jest w .gitignore
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 // 1. Baza Danych (SQL Server)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
@@ -97,13 +100,18 @@ app.MapPost("/api/login", async (
     AppDbContext db,
     IAuthService authService) =>
 {
-    var user = await db.Users.FirstOrDefaultAsync(u => u.Login == request.Login);
+    // Logowanie loginem LUB adresem e-mail (kolacja bazy Polish_CI_AS => porównanie bez względu na wielkość liter)
+    var identifier = request.Login?.Trim() ?? "";
+
+    var user = await db.Users.FirstOrDefaultAsync(u => u.Login == identifier)
+               ?? await db.Users.FirstOrDefaultAsync(u => u.Email == identifier);
 
     if (user == null)
     {
         return Results.Unauthorized();
     }
 
+    // Akceptujemy wyłącznie hasła zahashowane BCryptem (hasła zapisane zwykłym tekstem są odrzucane)
     bool isPasswordValid = false;
 
     if (user.PasswordHash != null && user.PasswordHash.StartsWith("$"))
@@ -114,12 +122,16 @@ app.MapPost("/api/login", async (
         }
         catch { isPasswordValid = false; }
     }
-    else
-    {
-        isPasswordValid = user.PasswordHash == request.Password;
-    }
 
     if (!isPasswordValid)
+    {
+        return Results.Unauthorized();
+    }
+
+    // Konto lub firma (tenant) wyłączone => brak dostępu.
+    // Sprawdzamy dopiero po haśle i zwracamy ten sam 401, żeby nie zdradzać, że konto istnieje.
+    var tenantActive = await db.Tenants.AnyAsync(t => t.TenantId == user.TenantId && t.IsActive);
+    if (!user.IsActive || !tenantActive)
     {
         return Results.Unauthorized();
     }
@@ -219,7 +231,13 @@ app.MapGet("/api/profile/me", async (UserService service, CancellationToken ct) 
 
 app.MapPut("/api/profile/me", async ([FromBody] UpdateUserDto dto, UserService service, CancellationToken ct) =>
 {
-    await service.UpdateCurrentUserProfileAsync(dto, ct);
+    var updated = await service.UpdateCurrentUserProfileAsync(dto, ct);
+
+    if (!updated)
+    {
+        return Results.BadRequest(new { message = "Ten adres e-mail jest już używany przez inne konto." });
+    }
+
     return Results.Ok(new { message = "Dane zaktualizowane" });
 })
 .RequireAuthorization();

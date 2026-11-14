@@ -28,16 +28,26 @@ public class UserService(AppDbContext db, IAppUserContext userContext)
     }
 
     // UPDATE DANYCH
-    public async Task UpdateCurrentUserProfileAsync(UpdateUserDto dto, CancellationToken ct = default)
+    // Zwraca false, gdy podany e-mail jest już przypisany do innego konta (e-mail jest unikalny i służy też do logowania)
+    public async Task<bool> UpdateCurrentUserProfileAsync(UpdateUserDto dto, CancellationToken ct = default)
     {
         var userId = userContext.UserId;
         var user = await db.Users.FirstOrDefaultAsync(u => u.UserId == userId, ct);
 
         if (user == null) throw new Exception("User not found");
 
+        var email = string.IsNullOrWhiteSpace(dto.Email) ? null : dto.Email.Trim();
+
+        // IgnoreQueryFilters: unikalność e-maila sprawdzamy we wszystkich tenantach, nie tylko w bieżącym
+        if (email != null && await db.Users.IgnoreQueryFilters()
+                .AnyAsync(u => u.Email == email && u.UserId != user.UserId, ct))
+        {
+            return false;
+        }
+
         user.FirstName = dto.FirstName;
         user.LastName = dto.LastName;
-        user.Email = dto.Email;
+        user.Email = email;
 
         // Sprawdzamy czy język istnieje, żeby nie zepsuć klucza obcego
         if (await db.Languages.AnyAsync(l => l.LanguageCode == dto.LanguageCode, ct))
@@ -46,6 +56,7 @@ public class UserService(AppDbContext db, IAppUserContext userContext)
         }
 
         await db.SaveChangesAsync(ct);
+        return true;
     }
 
     // ZMIANA HASŁA
@@ -56,17 +67,10 @@ public class UserService(AppDbContext db, IAppUserContext userContext)
 
         if (user == null) return false;
 
-        // 1. Sprawdź obecne hasło
-        // Uwaga: Obsługujemy sytuację, gdy stare hasło w bazie jest Plain Textem (dla pierwszego logowania)
-        bool isCurrentValid = false;
-        if (!string.IsNullOrEmpty(user.PasswordHash) && user.PasswordHash.StartsWith("$"))
-        {
-            isCurrentValid = BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash);
-        }
-        else
-        {
-            isCurrentValid = user.PasswordHash == dto.CurrentPassword;
-        }
+        // 1. Sprawdź obecne hasło (tylko BCrypt – hasła zapisane zwykłym tekstem nie są akceptowane)
+        bool isCurrentValid = !string.IsNullOrEmpty(user.PasswordHash)
+                              && user.PasswordHash.StartsWith("$")
+                              && BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash);
 
         if (!isCurrentValid) return false;
 
@@ -87,11 +91,12 @@ public class UserService(AppDbContext db, IAppUserContext userContext)
     public async Task InitiatePasswordResetAsync(string email, string frontendUrlBase, EmailService emailService)
     {
         // Szukamy użytkownika po mailu
+        email = email?.Trim() ?? "";
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
 
-        // SECURITY: Jeśli user nie istnieje, nie rzucamy błędu, żeby nie zdradzać, czy mail jest w bazie.
+        // SECURITY: Jeśli user nie istnieje (lub jest wyłączony), nie rzucamy błędu, żeby nie zdradzać, czy mail jest w bazie.
         // Po prostu kończymy funkcję.
-        if (user == null) return;
+        if (user == null || !user.IsActive) return;
 
         // Generujemy Token (GUID)
         var token = Guid.NewGuid().ToString();
@@ -116,7 +121,7 @@ public class UserService(AppDbContext db, IAppUserContext userContext)
         var user = await db.Users.FirstOrDefaultAsync(u => u.ResetToken == token);
 
         // Sprawdzamy czy token istnieje i czy nie wygasł
-        if (user == null || user.ResetTokenExpires < DateTime.UtcNow)
+        if (user == null || !user.IsActive || user.ResetTokenExpires < DateTime.UtcNow)
         {
             return false; // Token nieważny
         }

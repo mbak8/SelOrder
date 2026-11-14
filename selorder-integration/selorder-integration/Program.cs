@@ -1,9 +1,12 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SelOrderIntegration.Services;
 
 // 1. Konfiguracja Hosta i rejestracja serwisów (Dependency Injection)
 var host = Host.CreateDefaultBuilder(args)
+    // Sekrety (connection string, DeepL) trzymamy w appsettings.Local.json – plik jest w .gitignore
+    .ConfigureAppConfiguration(config => config.AddJsonFile("appsettings.Local.json", optional: true))
     .ConfigureServices((context, services) =>
     {
         // Tutaj rejestrujesz wszystkie swoje zadania

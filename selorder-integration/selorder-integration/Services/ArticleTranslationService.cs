@@ -22,7 +22,7 @@ public class ArticleTranslationService
         string deepLApiKey = _configuration["DeepL:ApiKey"]
             ?? throw new InvalidOperationException("Brak klucza API DeepL w pliku appsettings.json.");
 
-        var translator = new Translator(deepLApiKey);
+        var translator = new DeepLClient(deepLApiKey);
 
         Console.WriteLine("Rozpoczynam proces tłumaczenia brakujących artykułów z języka PL na DE, EN, RU...");
 

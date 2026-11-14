@@ -51,6 +51,12 @@ public class AppDbContext(
         modelBuilder.Entity<User>()
             .HasIndex(u => u.Login)
             .IsUnique();
+
+        // E-mail służy też jako login, więc musi być unikalny (puste wartości dozwolone)
+        modelBuilder.Entity<User>()
+            .HasIndex(u => u.Email)
+            .IsUnique()
+            .HasFilter("[Email] IS NOT NULL");
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

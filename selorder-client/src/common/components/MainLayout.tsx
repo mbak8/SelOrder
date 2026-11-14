@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink } from 'react-router';
 // Zwróć uwagę na poprawną ścieżkę do Twojego kontekstu, dostosuj ją jeśli jest inna!
 import { useTranslations } from '../context/TranslationContext'; 
 import './MainLayout.css';
@@ -61,8 +61,17 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
         
         <aside className={`sidebar ${isMobileMenuOpen ? 'open' : ''}`}>
           <div className="sidebar-header">
-            <div style={{ marginBottom: 10, fontSize: '0.9em', color: '#666' }}>
-              <strong>{username}</strong>
+            {/* Długi login (np. e-mail) zawijamy zamiast ucinać: miejsce łamania po "@", pełna nazwa w podpowiedzi */}
+            <div
+              className="sidebar-username"
+              title={username}
+              style={{ marginBottom: 10, fontSize: '0.9em', color: '#666', minWidth: 0, overflowWrap: 'anywhere' }}
+            >
+              <strong>
+                {username.includes('@')
+                  ? <>{username.slice(0, username.indexOf('@') + 1)}<wbr />{username.slice(username.indexOf('@') + 1)}</>
+                  : username}
+              </strong>
             </div>
             <span className="close-btn" onClick={closeMenu}>✕</span>
           </div>

@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router';
 import { apiClient } from '../api/client';
 import { DataGrid, type Column } from '../common/components/DataGrid';
 import { useTranslations } from '../common/context/TranslationContext';

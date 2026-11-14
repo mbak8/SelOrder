@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { profileApi, type UserProfile } from '../../api/profileApi';
+import { isAxiosError } from 'axios';
 import { useTranslations } from '../context/TranslationContext'; // Import hooka
 
 const ProfilePage: React.FC = () => {
@@ -66,8 +67,15 @@ const ProfilePage: React.FC = () => {
       localStorage.setItem('language', profile.languageCode);
 
       setMessage({ text: t('Profile.SuccessSave'), type: 'success' });
-    } catch {
-      setMessage({ text: t('Profile.ErrorSave'), type: 'error' });
+    } catch (err) {
+      // 400 = e-mail zajęty przez inne konto (e-mail jest unikalny, bo służy też do logowania)
+      const emailTaken = isAxiosError(err) && err.response?.status === 400;
+      setMessage({
+        text: emailTaken
+          ? t('Profile.ErrorEmailTaken', 'Ten adres e-mail jest już używany przez inne konto.')
+          : t('Profile.ErrorSave'),
+        type: 'error'
+      });
     }
   };
 

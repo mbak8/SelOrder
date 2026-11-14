@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate } from 'react-router';
 import { TranslationProvider, useTranslations } from './common/context/TranslationContext';
 import { MainLayout } from './common/components/MainLayout';
 

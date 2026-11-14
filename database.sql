@@ -342,8 +342,8 @@ INCLUDE([Name]) WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEM
 GO
 SET ANSI_PADDING ON
 GO
-/****** Object:  Index [IX_Users_Email]    Script Date: 25.10.2026 21:31:51 ******/
-CREATE NONCLUSTERED INDEX [IX_Users_Email] ON [dbo].[Users]
+/****** Object:  Index [UQ_Users_Email]    Script Date: 25.10.2026 21:31:51 ******/
+CREATE UNIQUE NONCLUSTERED INDEX [UQ_Users_Email] ON [dbo].[Users]
 (
 	[Email] ASC
 )

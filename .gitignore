@@ -9,3 +9,6 @@
 /selorder-integration/selorder-integration/bin
 /selorder-integration/.vs
 *.bak
+
+# Lokalne sekrety (klucze API, hasła) – nigdy nie commitować
+appsettings.Local.json

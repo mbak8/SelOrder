@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "selorder-server",
+      "runtimeExecutable": "dotnet",
+      "runtimeArgs": ["run", "--project", "selorder-server/selorder-server.csproj"],
+      "port": 5000
+    },
+    {
+      "name": "selorder-client",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "selorder-client"],
+      "port": 5173
+    }
+  ]
+}

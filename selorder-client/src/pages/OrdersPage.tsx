@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router';
 import { useEffect, useState, useMemo } from 'react';
 import { apiClient } from '../api/client';
 import { DataGrid, type Column } from '../common/components/DataGrid';
