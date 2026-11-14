@@ -37,7 +37,7 @@ Integration job (needs `ConnectionStrings:DefaultConnection` and `DeepL:ApiKey` 
 cd selorder-integration/selorder-integration && dotnet run
 ```
 
-There is no automated test suite. Manual API requests live in `selorder-server/testy/testy.http`.
+There is no automated test suite.
 
 ## Server architecture
 
