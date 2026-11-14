@@ -326,9 +326,9 @@ export const OrderDetailsPage = () => {
 
   const dialogConfig = {
     approve: {
-      title: t('Order.Approve', 'Zatwierdź'),
+      title: t('Order.Approve', 'Zatwierdź zamówienie'),
       message: t('Order.ConfirmApprove', 'Zatwierdzić zamówienie? Po zatwierdzeniu nie będzie można go edytować.'),
-      confirmLabel: t('Order.Approve', 'Zatwierdź'),
+      confirmLabel: t('Order.Approve', 'Zatwierdź zamówienie'),
       danger: false
     },
     cancel: {
@@ -575,7 +575,7 @@ export const OrderDetailsPage = () => {
             {t('General.Save', 'Zapisz')}
           </button>
           <button onClick={() => setPendingAction('approve')} disabled={!canSave} style={buttonStyle('#2e7d32', canSave)}>
-            {t('Order.Approve', 'Zatwierdź')}
+            {t('Order.Approve', 'Zatwierdź zamówienie')}
           </button>
           <div style={{ flex: 1 }} />
           {/* Niezapisanego zamówienia nie ma czego anulować - wystarczy z niego wyjść */}
