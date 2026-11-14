@@ -9,6 +9,7 @@ public record OrderDto(
     int StatusId,          // Np. 5
     string StatusName,     // Np. "Zatwierdzone" (Tłumaczenie)
     string? ERPDocument,   // Nazwa dokumentu w ERP (np. ZK/2023/1)
-    string? StatusDescription // Dodatkowy opis błędu itp.
-                              // W przyszłości dodamy tu np. TotalValue (Suma zamówienia)
+    string? StatusDescription, // Dodatkowy opis błędu itp.
+    bool IsEditable            // Czy zamówienie można edytować (decyduje serwer, klient tylko wyświetla)
+                               // W przyszłości dodamy tu np. TotalValue (Suma zamówienia)
 );

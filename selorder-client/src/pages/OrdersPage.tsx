@@ -13,6 +13,7 @@ interface Order {
   statusName: string; // Przetłumaczona nazwa (np. "W opracowaniu")
   erpDocument?: string;
   statusDescription?: string;
+  isEditable: boolean; // Czy zamówienie można edytować (decyduje serwer)
 }
 
 // Interfejs odpowiedzi stronicowanej
@@ -118,6 +119,7 @@ export const OrdersPage = () => {
         
         switch (item.statusId) {
             case 0:  color = '#666'; break;       // W opracowaniu (Szary)
+            case 3:  color = '#999'; break;       // Anulowane (Jasnoszary)
             case 5:  color = '#2e7d32'; break;    // Zatwierdzone (Zielony)
             case 10: color = '#1565c0'; break;    // Wysłane (Niebieski)
             case 15: color = '#d32f2f'; bg = '#ffebee'; break; // Błąd (Czerwony na tle)
@@ -153,14 +155,15 @@ export const OrdersPage = () => {
           style={{
             padding: '5px 10px',
             cursor: 'pointer',
-            backgroundColor: '#007bff', // Niebieski
+            // Edycja (W opracowaniu) - niebieski, podgląd (pozostałe statusy) - szary
+            backgroundColor: item.isEditable ? '#007bff' : '#6c757d',
             color: 'white',
             border: 'none',
             borderRadius: '4px',
             fontSize: '0.9em'
           }}
         >
-          {t('General.Edit') || 'Edytuj'} 
+          {item.isEditable ? t('General.Edit', 'Edytuj') : t('General.Show', 'Pokaż')}
         </button>
       )
     }    

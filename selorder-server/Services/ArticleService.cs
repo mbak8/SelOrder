@@ -58,7 +58,24 @@ public class ArticleService(AppDbContext db, IAppUserContext userContext)
         var userLanguage = userContext.LanguageCode ?? "PL";
         var query = db.Articles.AsNoTracking().AsQueryable();
 
-        // 1. Filtrowanie (bez zmian)
+        // 1a. Wyszukiwanie po kodzie LUB nazwie (np. wybór artykułu w edycji zamówienia).
+        //     Nie jest to właściwość DTO, więc obsługujemy je osobno i nie przekazujemy dalej.
+        var searchKey = filters.Keys.FirstOrDefault(k => k.Equals("search", StringComparison.OrdinalIgnoreCase));
+        if (searchKey != null)
+        {
+            var search = filters[searchKey].Trim();
+            filters = filters.Where(f => f.Key != searchKey).ToDictionary(f => f.Key, f => f.Value);
+
+            if (search.Length > 0)
+            {
+                query = query.Where(a =>
+                    a.Code.Contains(search) ||
+                    a.Name.Contains(search) ||
+                    a.ArticlesTranslations.Any(t => t.LanguageCode == userLanguage && t.Name.Contains(search)));
+            }
+        }
+
+        // 1b. Filtrowanie dynamiczne (bez zmian)
         query = query.ApplyDynamicFilters(filters);
 
         int totalCount = await query.CountAsync(ct);

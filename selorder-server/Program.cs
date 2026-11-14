@@ -1,4 +1,5 @@
 using Data;
+using DTOs;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -203,12 +204,29 @@ app.MapGet("/api/orders", async (OrderService service, HttpContext context) =>
 })
 .RequireAuthorization();
 
-// Tworzy nowe, puste zamówienie z nadanym numerem (ZS/{KOD}/{ROK}/{NR})
-app.MapPost("/api/orders", async (OrderService service) =>
+// Tworzy nowe zamówienie z pozycjami i nadaje mu numer (ZS/{KOD}/{ROK}/{NR})
+app.MapPost("/api/orders", async (SaveOrderItemsRequest request, OrderService service) =>
 {
-    var created = await service.CreateOrderAsync();
-    return Results.Created($"/api/orders/{created.Id}", created);
+    var (result, created) = await service.CreateOrderAsync(request.Items);
+    return created is not null
+        ? Results.Created($"/api/orders/{created.Id}", created)
+        : result.ToHttpResult();
 })
+.RequireAuthorization();
+
+// Zapis pozycji zamówienia (tylko w statusie "W opracowaniu", lista nie może być pusta)
+app.MapPut("/api/orders/{id:int}/items", async (int id, SaveOrderItemsRequest request, OrderService service) =>
+    (await service.SaveItemsAsync(id, request.Items)).ToHttpResult())
+.RequireAuthorization();
+
+// Zatwierdzenie zamówienia: "W opracowaniu" -> "Zatwierdzone" (wymaga pozycji)
+app.MapPost("/api/orders/{id:int}/approve", async (int id, OrderService service) =>
+    (await service.ApproveAsync(id)).ToHttpResult())
+.RequireAuthorization();
+
+// Anulowanie zamówienia: "W opracowaniu" -> "Anulowane"
+app.MapPost("/api/orders/{id:int}/cancel", async (int id, OrderService service) =>
+    (await service.CancelAsync(id)).ToHttpResult())
 .RequireAuthorization();
 
 app.MapGet("/api/orders/{id:int}", async (int id, OrderService service) =>
