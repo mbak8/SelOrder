@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo, useCallback, type CSSProperties } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef, type CSSProperties } from 'react';
 import { useParams, useNavigate, Navigate } from 'react-router';
 import axios from 'axios';
 import { apiClient, isMasterUser } from '../api/client';
@@ -98,8 +98,13 @@ export const OrderDetailsPage = () => {
   const [items, setItems] = useState<EditableItem[]>([]);
   const [isDirty, setIsDirty] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
+  // isInfo: komunikat informacyjny (niebieski), np. "artykuł jest już na liście"
+  const [message, setMessage] = useState<{ text: string; isError: boolean; isInfo?: boolean } | null>(null);
   const [pendingAction, setPendingAction] = useState<'approve' | 'cancel' | 'leave' | null>(null);
+
+  // Pola ilości w tabeli (do przejścia do istniejącej pozycji) i chwilowe podświetlenie pozycji
+  const quantityInputs = useRef(new Map<number, HTMLInputElement>());
+  const [highlightedArticleId, setHighlightedArticleId] = useState<number | null>(null);
 
   // Wyszukiwarka artykułów
   const [search, setSearch] = useState('');
@@ -184,14 +189,51 @@ export const OrderDetailsPage = () => {
   }, [t]);
 
   // --- Operacje na pozycjach ---
+  // Przewinięcie do pola ilości i ustawienie w nim kursora z zaznaczoną wartością (do nadpisania)
+  const focusQuantityInput = (input: HTMLInputElement) => {
+    input.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    input.focus({ preventScroll: true });
+    input.select();
+  };
+
+  // Pozycja, na której ustawić kursor, gdy tylko pojawi się w tabeli (nowo dodany artykuł)
+  const pendingFocusArticleId = useRef<number | null>(null);
+
+  useEffect(() => {
+    const articleId = pendingFocusArticleId.current;
+    if (articleId === null) return;
+    const input = quantityInputs.current.get(articleId);
+    if (!input) return;
+    pendingFocusArticleId.current = null;
+    focusQuantityInput(input);
+  }, [items]);
+
+  // Artykuł już jest na liście: nie zmieniamy ilości po cichu - przechodzimy do pozycji i ją podświetlamy
+  const goToExistingItem = (articleId: number) => {
+    setSearch('');
+    setSearchResults([]);
+    setMessage({ text: t('Order.AlreadyOnList', 'Ten artykuł jest już na liście – zmień ilość w tabeli.'), isError: false, isInfo: true });
+    setHighlightedArticleId(articleId);
+
+    const input = quantityInputs.current.get(articleId);
+    if (input) focusQuantityInput(input);
+  };
+
+  // Podświetlenie pozycji znika po 2 s
+  useEffect(() => {
+    if (highlightedArticleId === null) return;
+    const timerId = setTimeout(() => setHighlightedArticleId(null), 2000);
+    return () => clearTimeout(timerId);
+  }, [highlightedArticleId]);
+
   const addArticle = (article: ArticleOption) => {
+    if (items.some(i => i.articleId === article.id)) {
+      goToExistingItem(article.id);
+      return;
+    }
+
     setItems(prev => {
-      const existing = prev.find(i => i.articleId === article.id);
-      if (existing) {
-        // Artykuł już jest na liście - zwiększamy ilość o 1
-        const current = parseQuantity(existing.quantityText, existing.decimalPlaces) ?? 0;
-        return prev.map(i => i.articleId === article.id ? { ...i, quantityText: String(current + 1) } : i);
-      }
+      if (prev.some(i => i.articleId === article.id)) return prev;
       return [...prev, {
         orderItemId: 0,
         articleId: article.id,
@@ -207,6 +249,11 @@ export const OrderDetailsPage = () => {
     setMessage(null);
     setSearch('');
     setSearchResults([]);
+
+    // Nowa pozycja: tak samo jak przy powtórzonym artykule - podświetlenie i kursor w polu ilości
+    // (pole istnieje dopiero po odświeżeniu tabeli, więc fokus ustawia efekt na [items])
+    pendingFocusArticleId.current = article.id;
+    setHighlightedArticleId(article.id);
   };
 
   const changeQuantity = useCallback((articleId: number, text: string) => {
@@ -368,18 +415,25 @@ export const OrderDetailsPage = () => {
             return item.quantity.toFixed(item.decimalPlaces);
           }
           const invalid = parseQuantity(item.quantityText, item.decimalPlaces) === null;
+          const highlighted = item.articleId === highlightedArticleId;
           return (
             <input
               type="text"
               inputMode="decimal"
               value={item.quantityText}
+              ref={(el) => {
+                if (el) quantityInputs.current.set(item.articleId, el);
+                else quantityInputs.current.delete(item.articleId);
+              }}
               onChange={(e) => changeQuantity(item.articleId, e.target.value)}
               style={{
                 width: '90px',
                 padding: '4px 6px',
                 textAlign: 'right',
-                border: `1px solid ${invalid ? '#d32f2f' : '#ccc'}`,
-                backgroundColor: invalid ? '#ffebee' : 'white',
+                border: `1px solid ${invalid ? '#d32f2f' : highlighted ? '#1565c0' : '#ccc'}`,
+                backgroundColor: invalid ? '#ffebee' : highlighted ? '#fff59d' : 'white',
+                boxShadow: highlighted ? '0 0 0 3px rgba(21, 101, 192, 0.3)' : 'none',
+                transition: 'background-color 0.4s, box-shadow 0.4s',
                 color: '#333', // globalny styl inputów ma biały tekst
                 borderRadius: '4px'
               }}
@@ -411,7 +465,7 @@ export const OrderDetailsPage = () => {
     }
 
     return cols;
-  }, [t, isEditMode, changeQuantity, removeItem]);
+  }, [t, isEditMode, changeQuantity, removeItem, highlightedArticleId]);
 
   // Helper do daty (ten sam co wcześniej)
   const formatDate = (dateStr: string) => {
@@ -526,17 +580,29 @@ export const OrderDetailsPage = () => {
               {!searching && searchResults.length === 0 && (
                 <div style={{ padding: 8, color: '#888' }}>{t('Order.NoResults', 'Brak wyników')}</div>
               )}
-              {searchResults.map(a => (
-                <div
-                  key={a.id}
-                  onClick={() => addArticle(a)}
-                  style={{ padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = '#f0f6ff')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
-                >
-                  <strong>{a.code}</strong> – {a.name} <span style={{ color: '#888' }}>({a.unitName})</span>
-                </div>
-              ))}
+              {searchResults.map(a => {
+                // Artykuł już dodany - pokazujemy to przed kliknięciem (kliknięcie przeniesie do pozycji)
+                const onList = items.find(i => i.articleId === a.id);
+                return (
+                  <div
+                    key={a.id}
+                    onClick={() => addArticle(a)}
+                    style={{ padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = '#f0f6ff')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'white')}
+                  >
+                    <strong>{a.code}</strong> – {a.name} <span style={{ color: '#888' }}>({a.unitName})</span>
+                    {onList && (
+                      <span style={{
+                          marginLeft: 8, padding: '2px 6px', borderRadius: '4px', whiteSpace: 'nowrap',
+                          fontSize: '0.85em', color: '#2e7d32', backgroundColor: '#e8f5e9'
+                      }}>
+                        ✓ {t('Order.OnList', 'na liście')}: {onList.quantityText} {onList.unitCode}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
         </div>
@@ -561,8 +627,8 @@ export const OrderDetailsPage = () => {
       {message && (
         <div style={{
             marginTop: 15, padding: '10px 15px', borderRadius: '4px',
-            color: message.isError ? '#d32f2f' : '#2e7d32',
-            backgroundColor: message.isError ? '#ffebee' : '#e8f5e9'
+            color: message.isError ? '#d32f2f' : message.isInfo ? '#1565c0' : '#2e7d32',
+            backgroundColor: message.isError ? '#ffebee' : message.isInfo ? '#e3f2fd' : '#e8f5e9'
         }}>
           {message.text}
         </div>
