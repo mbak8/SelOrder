@@ -23,6 +23,9 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
         if (userContext.TenantId is not Guid tenantId || userContext.UserId is not int userId)
             throw new UnauthorizedAccessException("Brak kontekstu użytkownika.");
 
+        // Tenant nadrzędny nie składa zamówień (ma tylko podgląd)
+        if (userContext.IsMaster) return (OrderOperationResult.ReadOnly, null);
+
         var (validation, validItems) = await ValidateItemsAsync(items, ct);
         if (validation.Status != OrderOperationStatus.Ok) return (validation, null);
 
@@ -57,6 +60,8 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
     // Zapisuje pełną listę pozycji zamówienia (dodaje nowe, zmienia ilości, usuwa brakujące)
     public async Task<OrderOperationResult> SaveItemsAsync(int orderId, List<OrderItemInput>? items, CancellationToken ct = default)
     {
+        if (userContext.IsMaster) return OrderOperationResult.ReadOnly;
+
         var (validation, validItems) = await ValidateItemsAsync(items, ct);
         if (validation.Status != OrderOperationStatus.Ok) return validation;
 
@@ -92,6 +97,8 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
     // Zatwierdzenie: 0 -> 5, tylko gdy zamówienie ma pozycje
     public async Task<OrderOperationResult> ApproveAsync(int orderId, CancellationToken ct = default)
     {
+        if (userContext.IsMaster) return OrderOperationResult.ReadOnly;
+
         // Warunkowy UPDATE w jednym zapytaniu – chroni przed równoległą zmianą statusu w innej karcie
         var updated = await db.Orders
             .Where(o => o.OrderId == orderId
@@ -108,6 +115,8 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
     // Anulowanie: 0 -> 3
     public async Task<OrderOperationResult> CancelAsync(int orderId, CancellationToken ct = default)
     {
+        if (userContext.IsMaster) return OrderOperationResult.ReadOnly;
+
         var updated = await db.Orders
             .Where(o => o.OrderId == orderId
                      && o.TenantId == userContext.TenantId
@@ -124,15 +133,32 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
         CancellationToken ct = default)
     {
         var userLanguage = userContext.LanguageCode ?? "PL";
+        var tenantId = userContext.TenantId;
+        var isMaster = userContext.IsMaster;
 
         // 1. Podstawowe filtrowanie bezpieczeństwa
-        // Użytkownik widzi wszystkie zamówienia swojego Tenanta (Firmy)
+        // Użytkownik widzi wszystkie zamówienia swojego Tenanta (Firmy),
+        // a użytkownik tenanta nadrzędnego - zamówienia wszystkich klientów (tylko podgląd)
         var query = db.Orders
             .AsNoTracking()
-            .Where(o => o.TenantId == userContext.TenantId)
+            .Where(o => isMaster || o.TenantId == tenantId)
             .AsQueryable();
 
-        // 2. Dynamiczne filtry (z naszego Extension Method)
+        // 2a. Filtr po kliencie (kod lub nazwa firmy) - to nie jest pole zamówienia,
+        //     więc obsługujemy go osobno i nie przekazujemy do filtrów dynamicznych
+        var clientKey = filters.Keys.FirstOrDefault(k => k.Equals("clientName", StringComparison.OrdinalIgnoreCase));
+        if (clientKey != null)
+        {
+            var client = filters[clientKey].Trim();
+            filters = filters.Where(f => f.Key != clientKey).ToDictionary(f => f.Key, f => f.Value);
+
+            if (client.Length > 0)
+            {
+                query = query.Where(o => o.Tenant!.Code.Contains(client) || o.Tenant!.CompanyName.Contains(client));
+            }
+        }
+
+        // 2b. Dynamiczne filtry (z naszego Extension Method)
         query = query.ApplyDynamicFilters(filters);
 
         int totalCount = await query.CountAsync(ct);
@@ -164,7 +190,9 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
 
             o.ERPDocName,
             o.StatusDescription,
-            o.Status == EditableStatus
+            o.Status == EditableStatus && !isMaster,
+            o.Tenant!.Code,
+            o.Tenant!.CompanyName
         )).ToListAsync(ct);
 
         return new PagedResult<OrderDto>(items, totalCount, pageSize, pageNumber);
@@ -173,11 +201,13 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
     public async Task<OrderDetailDto?> GetOrderByIdAsync(int orderId, CancellationToken ct = default)
     {
         var userLanguage = userContext.LanguageCode ?? "PL";
+        var tenantId = userContext.TenantId;
+        var isMaster = userContext.IsMaster;
 
         // Jedna projekcja w SQL: nagłówek + pozycje z tłumaczeniami artykułów i jednostek
         return await db.Orders
             .AsNoTracking()
-            .Where(o => o.OrderId == orderId && o.TenantId == userContext.TenantId)
+            .Where(o => o.OrderId == orderId && (isMaster || o.TenantId == tenantId))
             .Select(o => new OrderDetailDto(
                 o.OrderId,
                 o.OrderNumber,
@@ -188,7 +218,9 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
                     .Select(t => t.TranslatedText)
                     .FirstOrDefault() ?? o.Status.ToString(),
                 o.ERPDocName,
-                o.Status == EditableStatus,
+                o.Status == EditableStatus && !isMaster,
+                o.Tenant!.Code,
+                o.Tenant!.CompanyName,
                 o.OrderItems
                     .OrderBy(i => i.OrderItemId)
                     .Select(i => new OrderItemDto(
@@ -275,7 +307,8 @@ public enum OrderOperationStatus
     Ok,
     NotFound,
     Conflict,
-    Invalid
+    Invalid,
+    Forbidden
 }
 
 // Wynik operacji na zamówieniu. Code trafia do klienta i służy jako klucz tłumaczenia (Order.Error.{Code}).
@@ -285,6 +318,8 @@ public record OrderOperationResult(OrderOperationStatus Status, string? Code = n
     public static readonly OrderOperationResult NotFound = new(OrderOperationStatus.NotFound);
     public static readonly OrderOperationResult NotEditable =
         new(OrderOperationStatus.Conflict, "NotEditable", "Zamówienie można zmieniać tylko w statusie \"W opracowaniu\".");
+    public static readonly OrderOperationResult ReadOnly =
+        new(OrderOperationStatus.Forbidden, "ReadOnly", "Masz dostęp do zamówień tylko w trybie podglądu.");
 
     public static OrderOperationResult Invalid(string code, string message) =>
         new(OrderOperationStatus.Invalid, code, message);
@@ -295,6 +330,7 @@ public record OrderOperationResult(OrderOperationStatus Status, string? Code = n
         OrderOperationStatus.Ok => Results.NoContent(),
         OrderOperationStatus.NotFound => Results.NotFound(),
         OrderOperationStatus.Conflict => Results.Conflict(new { code = Code, message = Message }),
+        OrderOperationStatus.Forbidden => Results.Json(new { code = Code, message = Message }, statusCode: StatusCodes.Status403Forbidden),
         _ => Results.BadRequest(new { code = Code, message = Message })
     };
 }

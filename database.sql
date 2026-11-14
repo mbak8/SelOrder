@@ -219,6 +219,7 @@ CREATE TABLE [dbo].[Tenants](
 	[IsActive] [bit] NOT NULL,
 	[CreatedAt] [datetimeoffset](7) NOT NULL, -- zawsze UTC (+00:00)
 	[Code] [nvarchar](10) NOT NULL,
+	[IsMaster] [bit] NOT NULL, -- tenant nadrzędny (właściciel portalu): podgląd zamówień wszystkich klientów
 PRIMARY KEY CLUSTERED
 (
 	[TenantId] ASC
@@ -350,6 +351,15 @@ CREATE UNIQUE NONCLUSTERED INDEX [UQ_Orders_Tenant_OrderNumber] ON [dbo].[Orders
 GO
 SET ANSI_PADDING ON
 GO
+/****** Object:  Index [UQ_Tenants_IsMaster] ******/
+-- Co najwyżej jeden tenant nadrzędny
+CREATE UNIQUE NONCLUSTERED INDEX [UQ_Tenants_IsMaster] ON [dbo].[Tenants]
+(
+	[IsMaster] ASC
+)
+WHERE ([IsMaster] = (1))
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
 /****** Object:  Index [UQ_Tenants_Code] ******/
 -- Krótki kod klienta używany w numerach zamówień (np. ZS/AGRO/2026/001)
 CREATE UNIQUE NONCLUSTERED INDEX [UQ_Tenants_Code] ON [dbo].[Tenants]
@@ -415,6 +425,8 @@ GO
 ALTER TABLE [dbo].[Tenants] ADD  DEFAULT ((1)) FOR [IsActive]
 GO
 ALTER TABLE [dbo].[Tenants] ADD  CONSTRAINT [DF_Tenants_CreatedAt]  DEFAULT (sysutcdatetime()) FOR [CreatedAt]
+GO
+ALTER TABLE [dbo].[Tenants] ADD  CONSTRAINT [DF_Tenants_IsMaster]  DEFAULT ((0)) FOR [IsMaster]
 GO
 ALTER TABLE [dbo].[Units] ADD  DEFAULT ((0)) FOR [DecimalPlaces]
 GO

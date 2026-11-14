@@ -11,6 +11,9 @@ public class AppDbContext(
     // Capture TenantId at context creation
     private readonly Guid? _currentTenantId = userContext.TenantId;
 
+    // Użytkownik tenanta nadrzędnego widzi zamówienia wszystkich klientów (zapis blokuje OrderService)
+    private readonly bool _isMaster = userContext.IsMaster;
+
     public DbSet<Tenant> Tenants { get; set; }
     public DbSet<User> Users { get; set; }
     public DbSet<Order> Orders { get; set; }
@@ -29,7 +32,8 @@ public class AppDbContext(
 
         // --- GLOBALNE FILTRY BEZPIECZEŃSTWA ---
         // Orders i Users widoczne tylko dla swojego Tenanta
-        modelBuilder.Entity<Order>().HasQueryFilter(x => _currentTenantId == null || x.TenantId == _currentTenantId);
+        // (Orders: tenant nadrzędny widzi wszystkie - tylko do podglądu, zapis blokuje OrderService)
+        modelBuilder.Entity<Order>().HasQueryFilter(x => _currentTenantId == null || _isMaster || x.TenantId == _currentTenantId);
         modelBuilder.Entity<User>().HasQueryFilter(x => _currentTenantId == null || x.TenantId == _currentTenantId);
 
         // Indeksy i ograniczenia unikalności zgodne ze schematem bazy danych

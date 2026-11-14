@@ -9,7 +9,7 @@ namespace Services;
 
 public interface IAuthService
 {
-    string GenerateJwtToken(User user);
+    string GenerateJwtToken(User user, bool isMaster);
 }
 
 public class AuthService(IConfiguration configuration) : IAuthService
@@ -17,7 +17,8 @@ public class AuthService(IConfiguration configuration) : IAuthService
     // Czas ważności tokena (np. pobierany z configu lub sztywno ustawiony)
     private const int TokenExpirationHours = 8;
 
-    public string GenerateJwtToken(User user)
+    // isMaster = użytkownik należy do tenanta nadrzędnego (Tenants.IsMaster)
+    public string GenerateJwtToken(User user, bool isMaster)
     {
         // 1. Pobieramy sekretny klucz z appsettings.json
         var secretKey = configuration["JwtSettings:SecretKey"];
@@ -44,6 +45,9 @@ public class AuthService(IConfiguration configuration) : IAuthService
             
             // Dzięki temu AppDbContext wie, jakie dane filtrować:
             new("TenantId", user.TenantId.ToString()),
+
+            // Tenant nadrzędny: podgląd zamówień wszystkich klientów (tylko odczyt)
+            new("IsMaster", isMaster ? "true" : "false"),
 
             // Dzięki temu TranslationService wie, jakiego języka użyć (np. "PL", "EN"):
             new("Language", user.LanguageCode)

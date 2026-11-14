@@ -8,6 +8,9 @@ public interface IAppUserContext
     int? UserId { get; }
     string LanguageCode { get; }
     bool IsAuthenticated { get; }
+
+    // Użytkownik tenanta nadrzędnego: podgląd zamówień wszystkich klientów, bez prawa zmian
+    bool IsMaster { get; }
 }
 
 // Primary Constructor
@@ -24,6 +27,11 @@ public class AppUserContext(IHttpContextAccessor httpContextAccessor) : IAppUser
 
     public int? UserId =>
         int.TryParse(_user?.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var id) ? id : null;
+
+    // Z tokena JWT (claim "IsMaster" nadawany przy logowaniu). Zmiana flagi w bazie
+    // działa po ponownym zalogowaniu. Brak claimu (np. stary token) = zwykły klient.
+    public bool IsMaster =>
+        bool.TryParse(_user?.FindFirst("IsMaster")?.Value, out var isMaster) && isMaster;
 
     // NOWY PRIORYTET JĘZYKA:
     // 1. Nagłówek HTTP z Reacta (najwyższy priorytet - reaguje na zmiany w locie)

@@ -1,7 +1,7 @@
 import { useEffect, useState, useMemo, useCallback, type CSSProperties } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import axios from 'axios';
-import { apiClient } from '../api/client';
+import { apiClient, isMasterUser } from '../api/client';
 import { DataGrid, type Column } from '../common/components/DataGrid';
 import { ConfirmDialog } from '../common/components/ConfirmDialog';
 import { useTranslations } from '../common/context/TranslationContext';
@@ -24,7 +24,9 @@ interface OrderDetail {
   statusId: number;
   statusName: string;
   erpDocument?: string;
-  isEditable: boolean; // Decyduje serwer: edycja tylko w statusie "W opracowaniu"
+  isEditable: boolean; // Decyduje serwer: edycja tylko w statusie "W opracowaniu" (i nie dla tenanta nadrzędnego)
+  clientCode: string;
+  clientName: string;
   items: OrderItem[];
 }
 
@@ -64,6 +66,7 @@ export const OrderDetailsPage = () => {
   const { t } = useTranslations();
   const { id } = useParams(); // Pobieramy ID z adresu URL (np. "15")
   const navigate = useNavigate();
+  const [isMaster] = useState(isMasterUser);
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -412,6 +415,12 @@ export const OrderDetailsPage = () => {
       }}>
         <div>
             <h2 style={{ margin: '0 0 10px 0' }}>{order.orderNumber}</h2>
+            {/* Tenant nadrzędny przegląda zamówienia różnych klientów - pokazujemy czyje to zamówienie */}
+            {isMaster && (
+                <div style={{ color: '#666', marginBottom: 5 }}>
+                    {t('Order.Client', 'Klient')}: <strong>{order.clientName}</strong> ({order.clientCode})
+                </div>
+            )}
             <div style={{ color: '#666' }}>
                 {t('Order.Date', 'Data')}: <strong>{formatDate(order.orderDate)}</strong>
             </div>

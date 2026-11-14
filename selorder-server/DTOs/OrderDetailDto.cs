@@ -20,6 +20,8 @@ public record OrderDetailDto(
     string StatusName,
     string? ERPDocument,
     bool IsEditable,     // Czy zamówienie można edytować / zatwierdzić / anulować
+    string ClientCode,   // Kod klienta (Tenants.Code)
+    string ClientName,   // Nazwa firmy klienta
     // Lista pozycji
     List<OrderItemDto> Items
 );

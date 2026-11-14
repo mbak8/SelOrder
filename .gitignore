@@ -12,3 +12,5 @@
 
 # Lokalne sekrety (klucze API, hasła) – nigdy nie commitować
 appsettings.Local.json
+# Lokalne żądania testowe z danymi logowania kont testowych (np. testy/testy.local.http)
+*.local.http

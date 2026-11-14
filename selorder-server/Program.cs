@@ -132,13 +132,17 @@ app.MapPost("/api/login", async (
 
     // Konto lub firma (tenant) wyłączone => brak dostępu.
     // Sprawdzamy dopiero po haśle i zwracamy ten sam 401, żeby nie zdradzać, że konto istnieje.
-    var tenantActive = await db.Tenants.AnyAsync(t => t.TenantId == user.TenantId && t.IsActive);
-    if (!user.IsActive || !tenantActive)
+    var tenant = await db.Tenants
+        .Where(t => t.TenantId == user.TenantId)
+        .Select(t => new { t.IsActive, t.IsMaster })
+        .FirstOrDefaultAsync();
+
+    if (!user.IsActive || tenant is not { IsActive: true })
     {
         return Results.Unauthorized();
     }
 
-    var token = authService.GenerateJwtToken(user);
+    var token = authService.GenerateJwtToken(user, tenant.IsMaster);
 
     return Results.Ok(new
     {
@@ -244,7 +248,8 @@ app.MapGet("/api/me", (IAppUserContext context) =>
         Message = "Jesteś zalogowany!",
         MyId = context.UserId,
         MyTenant = context.TenantId,
-        MyLanguage = context.LanguageCode
+        MyLanguage = context.LanguageCode,
+        IsMaster = context.IsMaster
     });
 }).RequireAuthorization();
 

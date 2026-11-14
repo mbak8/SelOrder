@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router';
 import { useEffect, useState, useMemo } from 'react';
-import { apiClient } from '../api/client';
+import { apiClient, isMasterUser } from '../api/client';
 import { DataGrid, type Column } from '../common/components/DataGrid';
 import { useTranslations } from  '../common/context/TranslationContext';
 
@@ -14,6 +14,8 @@ interface Order {
   erpDocument?: string;
   statusDescription?: string;
   isEditable: boolean; // Czy zamówienie można edytować (decyduje serwer)
+  clientCode: string;  // Kod klienta (np. "NOWAK")
+  clientName: string;  // Nazwa firmy klienta
 }
 
 // Interfejs odpowiedzi stronicowanej
@@ -29,7 +31,10 @@ export const OrdersPage = () => {
   const { t } = useTranslations();
 
   const navigate = useNavigate();
-  
+
+  // Tenant nadrzędny widzi zamówienia wszystkich klientów -> dodatkowa kolumna "Klient"
+  const [isMaster] = useState(isMasterUser);
+
   // Konfiguracja
   const IS_PAGINATION_ENABLED = true; // Tu chcemy stronicowanie, bo zamówień będzie dużo
   const IS_FILTERING_ENABLED = true;
@@ -86,8 +91,19 @@ export const OrdersPage = () => {
       width: '180px',
       render: (val) => <strong>{val}</strong>
     },
-    { 
-      key: 'date', 
+    // Kolumna "Klient" tylko dla tenanta nadrzędnego (filtr szuka po nazwie i kodzie klienta)
+    ...(isMaster ? [{
+      key: 'clientName' as const,
+      header: t('Order.Client', 'Klient'),
+      width: '260px',
+      render: (_: unknown, item: Order) => (
+        <span>
+          {item.clientName} <span style={{ color: '#888', fontSize: '0.85em' }}>({item.clientCode})</span>
+        </span>
+      )
+    }] : []),
+    {
+      key: 'date',
       header: t('Order.Date'), // lub "Data"
       width: '150px',
       render: (val) => {
@@ -167,7 +183,7 @@ export const OrdersPage = () => {
         </button>
       )
     }    
-  ], [t, navigate]);
+  ], [t, navigate, isMaster]);
 
   return (
     <div style={{ padding: '20px' }}>

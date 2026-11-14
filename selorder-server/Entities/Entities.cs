@@ -27,6 +27,10 @@ public class Tenant
 
     public bool IsActive { get; set; } = true;
 
+    // Tenant nadrzędny (właściciel portalu): jego użytkownicy widzą zamówienia wszystkich klientów,
+    // ale tylko do podglądu. W bazie może być co najwyżej jeden (UQ_Tenants_IsMaster).
+    public bool IsMaster { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public ICollection<User> Users { get; set; } = [];
