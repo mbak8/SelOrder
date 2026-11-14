@@ -6,6 +6,7 @@ export interface Column<T> {
   key: keyof T;
   header: string;
   width?: string;
+  filterable?: boolean; // false = bez pola filtra nad kolumną (np. kolumna z przyciskami)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   render?: (value: any, item: T) => ReactNode;
 }
@@ -77,12 +78,14 @@ export const DataGrid = <T,>({
               <tr className="filter-row">
                 {columns.map((col) => (
                    <th key={`filter-${String(col.key)}`}>
-                      <input
-                        className="datagrid-filter-input"
-                        placeholder={`${t('Grid.Search')}...`}
-                        value={filters?.[String(col.key)] || ''}
-                        onChange={(e) => onFilterChange!(String(col.key), e.target.value)}
-                      />
+                      {col.filterable !== false && (
+                        <input
+                          className="datagrid-filter-input"
+                          placeholder={`${t('Grid.Search')}...`}
+                          value={filters?.[String(col.key)] || ''}
+                          onChange={(e) => onFilterChange!(String(col.key), e.target.value)}
+                        />
+                      )}
                    </th>
                 ))}
               </tr>

@@ -10,6 +10,9 @@ import { OrderDetailsPage } from './pages/OrderDetailsPage';
 import ProfilePage from './common/pages/ProfilePage';
 import { ForgotPasswordPage } from './common/pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './common/pages/ResetPasswordPage';
+import { ClientsPage } from './pages/admin/ClientsPage';
+import { ClientDetailsPage } from './pages/admin/ClientDetailsPage';
+import { isMasterUser } from './api/client';
 
 // --- POPRAWKA TYPÓW ---
 export interface LoginResponse {
@@ -100,7 +103,15 @@ const AppContent = () => {
         <Route path="/orders" element={<OrdersPage />} />
         <Route path="/orders/:id" element={<OrderDetailsPage />} />
         <Route path="/profile" element={<ProfilePage />} />
-        
+
+        {/* Panel administratora - tylko tenant nadrzędny; pozostali trafiają w "*" (uprawnienia i tak sprawdza serwer) */}
+        {isMasterUser() && (
+          <>
+            <Route path="/admin/clients" element={<ClientsPage />} />
+            <Route path="/admin/clients/:id" element={<ClientDetailsPage />} />
+          </>
+        )}
+
         {/* Jeśli zalogowany wejdzie na login/reset, przekieruj do aplikacji */}
         <Route path="/login" element={<Navigate to="/" />} />
         <Route path="/forgot-password" element={<Navigate to="/" />} />

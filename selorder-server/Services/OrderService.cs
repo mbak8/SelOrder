@@ -14,9 +14,15 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
     // Strefa czasowa, wg której liczymy rok w numerze zamówienia (ZS/{KOD}/{ROK}/{NR})
     private static readonly TimeZoneInfo NumberingTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Warsaw");
 
+    // Wyniki specyficzne dla zamówień. Code trafia do klienta jako klucz tłumaczenia (Order.Error.{Code}).
+    private static readonly OperationResult NotEditable =
+        OperationResult.Conflict("NotEditable", "Zamówienie można zmieniać tylko w statusie \"W opracowaniu\".");
+    private static readonly OperationResult ReadOnly =
+        OperationResult.Forbidden("ReadOnly", "Masz dostęp do zamówień tylko w trybie podglądu.");
+
     // Tworzy nowe zamówienie (status "W opracowaniu") z pozycjami i od razu nadaje mu numer.
     // Zamówienie bez pozycji nie zostanie zapisane.
-    public async Task<(OrderOperationResult Result, OrderCreatedDto? Created)> CreateOrderAsync(
+    public async Task<(OperationResult Result, OrderCreatedDto? Created)> CreateOrderAsync(
         List<OrderItemInput>? items,
         string? notes,
         CancellationToken ct = default)
@@ -25,13 +31,13 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
             throw new UnauthorizedAccessException("Brak kontekstu użytkownika.");
 
         // Tenant nadrzędny nie składa zamówień (ma tylko podgląd)
-        if (userContext.IsMaster) return (OrderOperationResult.ReadOnly, null);
+        if (userContext.IsMaster) return (ReadOnly, null);
 
         var (validation, validItems) = await ValidateItemsAsync(items, ct);
-        if (validation.Status != OrderOperationStatus.Ok) return (validation, null);
+        if (validation.Status != OperationStatus.Ok) return (validation, null);
 
         var (notesValidation, normalizedNotes) = ValidateNotes(notes);
-        if (notesValidation.Status != OrderOperationStatus.Ok) return (notesValidation, null);
+        if (notesValidation.Status != OperationStatus.Ok) return (notesValidation, null);
 
         // Licznik i zamówienie w jednej transakcji – jeśli zapis się nie uda, numer nie przepada
         await using var tx = await db.Database.BeginTransactionAsync(ct);
@@ -59,26 +65,26 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
         await db.SaveChangesAsync(ct);
         await tx.CommitAsync(ct);
 
-        return (OrderOperationResult.Ok, new OrderCreatedDto(order.OrderId, order.OrderNumber));
+        return (OperationResult.Ok, new OrderCreatedDto(order.OrderId, order.OrderNumber));
     }
 
     // Zapisuje pełną listę pozycji zamówienia (dodaje nowe, zmienia ilości, usuwa brakujące) oraz uwagi
-    public async Task<OrderOperationResult> SaveItemsAsync(int orderId, List<OrderItemInput>? items, string? notes, CancellationToken ct = default)
+    public async Task<OperationResult> SaveItemsAsync(int orderId, List<OrderItemInput>? items, string? notes, CancellationToken ct = default)
     {
-        if (userContext.IsMaster) return OrderOperationResult.ReadOnly;
+        if (userContext.IsMaster) return ReadOnly;
 
         var (validation, validItems) = await ValidateItemsAsync(items, ct);
-        if (validation.Status != OrderOperationStatus.Ok) return validation;
+        if (validation.Status != OperationStatus.Ok) return validation;
 
         var (notesValidation, normalizedNotes) = ValidateNotes(notes);
-        if (notesValidation.Status != OrderOperationStatus.Ok) return notesValidation;
+        if (notesValidation.Status != OperationStatus.Ok) return notesValidation;
 
         var order = await db.Orders
             .Include(o => o.OrderItems)
             .FirstOrDefaultAsync(o => o.OrderId == orderId && o.TenantId == userContext.TenantId, ct);
 
-        if (order == null) return OrderOperationResult.NotFound;
-        if (order.Status != EditableStatus) return OrderOperationResult.NotEditable;
+        if (order == null) return OperationResult.NotFound;
+        if (order.Status != EditableStatus) return NotEditable;
 
         order.Notes = normalizedNotes;
 
@@ -101,13 +107,13 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
         }
 
         await db.SaveChangesAsync(ct);
-        return OrderOperationResult.Ok;
+        return OperationResult.Ok;
     }
 
     // Zatwierdzenie: 0 -> 5, tylko gdy zamówienie ma pozycje
-    public async Task<OrderOperationResult> ApproveAsync(int orderId, CancellationToken ct = default)
+    public async Task<OperationResult> ApproveAsync(int orderId, CancellationToken ct = default)
     {
-        if (userContext.IsMaster) return OrderOperationResult.ReadOnly;
+        if (userContext.IsMaster) return ReadOnly;
 
         // Warunkowy UPDATE w jednym zapytaniu – chroni przed równoległą zmianą statusu w innej karcie
         var updated = await db.Orders
@@ -119,13 +125,13 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
                 .SetProperty(o => o.Status, OrderStatus.Approved)
                 .SetProperty(o => o.StatusDescription, (string?)null), ct);
 
-        return updated > 0 ? OrderOperationResult.Ok : await ExplainFailureAsync(orderId, ct);
+        return updated > 0 ? OperationResult.Ok : await ExplainFailureAsync(orderId, ct);
     }
 
     // Anulowanie: 0 -> 3
-    public async Task<OrderOperationResult> CancelAsync(int orderId, CancellationToken ct = default)
+    public async Task<OperationResult> CancelAsync(int orderId, CancellationToken ct = default)
     {
-        if (userContext.IsMaster) return OrderOperationResult.ReadOnly;
+        if (userContext.IsMaster) return ReadOnly;
 
         var updated = await db.Orders
             .Where(o => o.OrderId == orderId
@@ -133,7 +139,7 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
                      && o.Status == EditableStatus)
             .ExecuteUpdateAsync(s => s.SetProperty(o => o.Status, OrderStatus.Cancelled), ct);
 
-        return updated > 0 ? OrderOperationResult.Ok : await ExplainFailureAsync(orderId, ct);
+        return updated > 0 ? OperationResult.Ok : await ExplainFailureAsync(orderId, ct);
     }
 
     public async Task<PagedResult<OrderDto>> GetOrdersPagedAsync(
@@ -259,15 +265,15 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
 
     // Walidacja pozycji: niepusta lista, dodatnie ilości zgodne z jednostką, istniejące artykuły.
     // Duplikaty tego samego artykułu są sumowane do jednej pozycji.
-    private async Task<(OrderOperationResult Result, List<OrderItemInput> Items)> ValidateItemsAsync(
+    private async Task<(OperationResult Result, List<OrderItemInput> Items)> ValidateItemsAsync(
         List<OrderItemInput>? items,
         CancellationToken ct)
     {
         if (items == null || items.Count == 0)
-            return (OrderOperationResult.Invalid("NoItems", "Zamówienie musi mieć co najmniej jedną pozycję."), []);
+            return (OperationResult.Invalid("NoItems", "Zamówienie musi mieć co najmniej jedną pozycję."), []);
 
         if (items.Any(i => i.Quantity <= 0))
-            return (OrderOperationResult.Invalid("InvalidQuantity", "Ilość musi być większa od zera."), []);
+            return (OperationResult.Invalid("InvalidQuantity", "Ilość musi być większa od zera."), []);
 
         var merged = items
             .GroupBy(i => i.ArticleId)
@@ -281,32 +287,32 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
             .ToDictionaryAsync(a => a.ArticleId, a => a.DecimalPlaces, ct);
 
         if (decimalPlaces.Count != merged.Count)
-            return (OrderOperationResult.Invalid("InvalidArticle", "Zamówienie zawiera nieistniejący artykuł."), []);
+            return (OperationResult.Invalid("InvalidArticle", "Zamówienie zawiera nieistniejący artykuł."), []);
 
         // Ilość nie może mieć więcej miejsc po przecinku niż pozwala jednostka (i kolumna decimal(18,4))
         foreach (var item in merged)
         {
             var places = Math.Min(decimalPlaces[item.ArticleId], 4);
             if (decimal.Round(item.Quantity, places) != item.Quantity)
-                return (OrderOperationResult.Invalid("InvalidQuantity", "Ilość ma za dużo miejsc po przecinku dla tej jednostki."), []);
+                return (OperationResult.Invalid("InvalidQuantity", "Ilość ma za dużo miejsc po przecinku dla tej jednostki."), []);
         }
 
-        return (OrderOperationResult.Ok, merged);
+        return (OperationResult.Ok, merged);
     }
 
     // Uwagi: przycinamy spacje, pusty tekst = brak uwag, limit długości jak kolumna w bazie
-    private static (OrderOperationResult Result, string? Notes) ValidateNotes(string? notes)
+    private static (OperationResult Result, string? Notes) ValidateNotes(string? notes)
     {
         var trimmed = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
 
         if (trimmed != null && trimmed.Length > Order.NotesMaxLength)
-            return (OrderOperationResult.Invalid("NotesTooLong", $"Uwagi mogą mieć najwyżej {Order.NotesMaxLength} znaków."), null);
+            return (OperationResult.Invalid("NotesTooLong", $"Uwagi mogą mieć najwyżej {Order.NotesMaxLength} znaków."), null);
 
-        return (OrderOperationResult.Ok, trimmed);
+        return (OperationResult.Ok, trimmed);
     }
 
     // Ustala, dlaczego warunkowa zmiana statusu nie objęła żadnego wiersza
-    private async Task<OrderOperationResult> ExplainFailureAsync(int orderId, CancellationToken ct)
+    private async Task<OperationResult> ExplainFailureAsync(int orderId, CancellationToken ct)
     {
         var order = await db.Orders
             .AsNoTracking()
@@ -314,45 +320,12 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
             .Select(o => new { o.Status, HasItems = o.OrderItems.Any() })
             .FirstOrDefaultAsync(ct);
 
-        if (order == null) return OrderOperationResult.NotFound;
-        if (order.Status != EditableStatus) return OrderOperationResult.NotEditable;
+        if (order == null) return OperationResult.NotFound;
+        if (order.Status != EditableStatus) return NotEditable;
         if (!order.HasItems)
-            return OrderOperationResult.Invalid("NoItems", "Zamówienie musi mieć co najmniej jedną pozycję.");
+            return OperationResult.Invalid("NoItems", "Zamówienie musi mieć co najmniej jedną pozycję.");
 
         // Status zmienił się między zapytaniami (np. równoległa operacja w innej karcie)
-        return OrderOperationResult.NotEditable;
+        return NotEditable;
     }
-}
-
-public enum OrderOperationStatus
-{
-    Ok,
-    NotFound,
-    Conflict,
-    Invalid,
-    Forbidden
-}
-
-// Wynik operacji na zamówieniu. Code trafia do klienta i służy jako klucz tłumaczenia (Order.Error.{Code}).
-public record OrderOperationResult(OrderOperationStatus Status, string? Code = null, string? Message = null)
-{
-    public static readonly OrderOperationResult Ok = new(OrderOperationStatus.Ok);
-    public static readonly OrderOperationResult NotFound = new(OrderOperationStatus.NotFound);
-    public static readonly OrderOperationResult NotEditable =
-        new(OrderOperationStatus.Conflict, "NotEditable", "Zamówienie można zmieniać tylko w statusie \"W opracowaniu\".");
-    public static readonly OrderOperationResult ReadOnly =
-        new(OrderOperationStatus.Forbidden, "ReadOnly", "Masz dostęp do zamówień tylko w trybie podglądu.");
-
-    public static OrderOperationResult Invalid(string code, string message) =>
-        new(OrderOperationStatus.Invalid, code, message);
-
-    // Mapowanie na odpowiedź HTTP
-    public IResult ToHttpResult() => Status switch
-    {
-        OrderOperationStatus.Ok => Results.NoContent(),
-        OrderOperationStatus.NotFound => Results.NotFound(),
-        OrderOperationStatus.Conflict => Results.Conflict(new { code = Code, message = Message }),
-        OrderOperationStatus.Forbidden => Results.Json(new { code = Code, message = Message }, statusCode: StatusCodes.Status403Forbidden),
-        _ => Results.BadRequest(new { code = Code, message = Message })
-    };
 }

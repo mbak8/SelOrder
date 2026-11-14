@@ -42,6 +42,7 @@ builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<EmailService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<AdminService>();
 
 // 4. Auth
 var jwtKey = builder.Configuration["JwtSettings:SecretKey"];
@@ -67,7 +68,11 @@ builder.Services.AddAuthentication(options =>
         ClockSkew = TimeSpan.Zero
     };
 });
-builder.Services.AddAuthorization();
+// Polityka "Master": tylko użytkownicy tenanta nadrzędnego (claim "IsMaster" w JWT) - panel administratora
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Master", policy => policy.RequireClaim("IsMaster", "true"));
+});
 
 // 5. CORS
 builder.Services.AddCors(options =>
@@ -286,6 +291,63 @@ app.MapPut("/api/profile/password", async ([FromBody] ChangePasswordDto dto, Use
     return Results.Ok(new { message = "Hasło zostało zmienione." });
 })
 .RequireAuthorization();
+
+// ==========================================
+// PANEL ADMINISTRATORA (tylko tenant nadrzędny)
+// ==========================================
+
+var admin = app.MapGroup("/api/admin").RequireAuthorization("Master");
+
+// Lista klientów (stronicowanie + filtry "code", "companyName")
+admin.MapGet("/tenants", async (AdminService service, HttpContext context) =>
+{
+    int page = int.TryParse(context.Request.Query["page"], out var p) ? p : 1;
+    int pageSize = int.TryParse(context.Request.Query["pageSize"], out var ps) ? ps : 20;
+
+    var filters = context.Request.Query
+        .Where(q => q.Key.ToLower() != "page" && q.Key.ToLower() != "pagesize")
+        .ToDictionary(q => q.Key, q => q.Value.ToString());
+
+    return await service.GetTenantsPagedAsync(page, pageSize, filters);
+});
+
+admin.MapGet("/tenants/{id:guid}", async (Guid id, AdminService service) =>
+{
+    var tenant = await service.GetTenantAsync(id);
+    return tenant is not null ? Results.Ok(tenant) : Results.NotFound();
+});
+
+// Nowy klient (kod nadawany tylko tutaj - później nie można go zmienić)
+admin.MapPost("/tenants", async (CreateTenantRequest request, AdminService service) =>
+{
+    var (result, created) = await service.CreateTenantAsync(request);
+    return created is not null
+        ? Results.Created($"/api/admin/tenants/{created.Id}", created)
+        : result.ToHttpResult();
+});
+
+// Edycja klienta: nazwa i aktywność
+admin.MapPut("/tenants/{id:guid}", async (Guid id, UpdateTenantRequest request, AdminService service) =>
+    (await service.UpdateTenantAsync(id, request)).ToHttpResult());
+
+admin.MapGet("/tenants/{id:guid}/users", async (Guid id, AdminService service) =>
+{
+    var users = await service.GetTenantUsersAsync(id);
+    return users is not null ? Results.Ok(users) : Results.NotFound();
+});
+
+// Nowy użytkownik klienta
+admin.MapPost("/tenants/{id:guid}/users", async (Guid id, CreateUserRequest request, AdminService service) =>
+{
+    var (result, created) = await service.CreateUserAsync(id, request);
+    return created is not null
+        ? Results.Created($"/api/admin/tenants/{id}/users/{created.Id}", created)
+        : result.ToHttpResult();
+});
+
+// Edycja użytkownika (puste NewPassword = hasło bez zmian)
+admin.MapPut("/tenants/{tenantId:guid}/users/{userId:int}", async (Guid tenantId, int userId, UpdateUserRequest request, AdminService service) =>
+    (await service.UpdateUserAsync(tenantId, userId, request)).ToHttpResult());
 
 app.Run("http://0.0.0.0:5000");
 

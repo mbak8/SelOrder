@@ -84,10 +84,13 @@ public class AppDbContext(
     {
         foreach (var entry in ChangeTracker.Entries<ITenantAware>())
         {
-            if (entry.State == EntityState.Added && _currentTenantId.HasValue)
-            {
-                entry.Entity.TenantId = _currentTenantId.Value;
-            }
+            if (entry.State != EntityState.Added || !_currentTenantId.HasValue) continue;
+
+            // Tenant nadrzędny (panel administratora) może jawnie wskazać tenanta, np. dodając
+            // użytkownika klientowi. Wszystkim pozostałym zawsze wpisujemy ich własnego tenanta.
+            if (_isMaster && entry.Entity.TenantId != Guid.Empty) continue;
+
+            entry.Entity.TenantId = _currentTenantId.Value;
         }
     }
 }

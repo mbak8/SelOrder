@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { NavLink } from 'react-router';
+import { isMasterUser } from '../../api/client';
 // Zwróć uwagę na poprawną ścieżkę do Twojego kontekstu, dostosuj ją jeśli jest inna!
 import { useTranslations } from '../context/TranslationContext'; 
 import './MainLayout.css';
@@ -9,13 +10,16 @@ interface MainLayoutProps {
   children: React.ReactNode;
   onLogout: () => void;
   username: string;
-  t: (key: string) => string;
+  t: (key: string, fallback?: string) => string;
 }
 
 export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps) => {
 
   const [isMobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
+
+  // Użytkownik tenanta nadrzędnego widzi pozycję "Administracja"
+  const [isMaster] = useState(isMasterUser);
+
   // 1. Pobieramy stan i funkcję do zmiany języka z Contextu
   const { language, changeLanguage } = useTranslations(); 
   
@@ -92,6 +96,17 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
             >
               📦 {t('Menu.Articles')}
             </NavLink>
+
+            {/* Panel administratora - tylko tenant nadrzędny (uprawnienia i tak sprawdza serwer) */}
+            {isMaster && (
+              <NavLink
+                to="/admin/clients"
+                className={({ isActive }) => isActive ? "menu-item active" : "menu-item"}
+                onClick={closeMenu}
+              >
+                🛠️ {t('Menu.Admin', 'Administracja')}
+              </NavLink>
+            )}
           </nav>
 
           <div className="sidebar-footer">
