@@ -202,6 +202,7 @@ CREATE TABLE [dbo].[Orders](
 	[ERPDocId] [int] NULL,
 	[ERPDocName] [nvarchar](50) NULL,
 	[OrderDate] [datetimeoffset](2) NOT NULL, -- zawsze UTC (+00:00)
+	[Notes] [nvarchar](1000) NULL, -- uwagi klienta do zamówienia
 PRIMARY KEY CLUSTERED 
 (
 	[OrderId] ASC

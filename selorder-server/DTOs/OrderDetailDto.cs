@@ -22,6 +22,7 @@ public record OrderDetailDto(
     bool IsEditable,     // Czy zamówienie można edytować / zatwierdzić / anulować
     string ClientCode,   // Kod klienta (Tenants.Code)
     string ClientName,   // Nazwa firmy klienta
+    string? Notes,       // Uwagi do zamówienia
     // Lista pozycji
     List<OrderItemDto> Items
 );
@@ -32,7 +33,9 @@ public record OrderItemInput(
     decimal Quantity
 );
 
-// Treść żądania zapisu pozycji zamówienia (PUT /api/orders/{id}/items)
+// Treść żądania zapisu zamówienia: pozycje + uwagi (POST /api/orders, PUT /api/orders/{id}/items).
+// Notes = null lub pusty tekst -> brak uwag.
 public record SaveOrderItemsRequest(
-    List<OrderItemInput> Items
+    List<OrderItemInput> Items,
+    string? Notes = null
 );

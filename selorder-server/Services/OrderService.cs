@@ -18,6 +18,7 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
     // Zamówienie bez pozycji nie zostanie zapisane.
     public async Task<(OrderOperationResult Result, OrderCreatedDto? Created)> CreateOrderAsync(
         List<OrderItemInput>? items,
+        string? notes,
         CancellationToken ct = default)
     {
         if (userContext.TenantId is not Guid tenantId || userContext.UserId is not int userId)
@@ -28,6 +29,9 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
 
         var (validation, validItems) = await ValidateItemsAsync(items, ct);
         if (validation.Status != OrderOperationStatus.Ok) return (validation, null);
+
+        var (notesValidation, normalizedNotes) = ValidateNotes(notes);
+        if (notesValidation.Status != OrderOperationStatus.Ok) return (notesValidation, null);
 
         // Licznik i zamówienie w jednej transakcji – jeśli zapis się nie uda, numer nie przepada
         await using var tx = await db.Database.BeginTransactionAsync(ct);
@@ -45,6 +49,7 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
             OrderDate = orderDate,
             OrderNumber = number,
             Status = OrderStatus.InPreparation,
+            Notes = normalizedNotes,
             OrderItems = validItems
                 .Select(i => new OrderItem { ArticleId = i.ArticleId, Quantity = i.Quantity })
                 .ToList()
@@ -57,13 +62,16 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
         return (OrderOperationResult.Ok, new OrderCreatedDto(order.OrderId, order.OrderNumber));
     }
 
-    // Zapisuje pełną listę pozycji zamówienia (dodaje nowe, zmienia ilości, usuwa brakujące)
-    public async Task<OrderOperationResult> SaveItemsAsync(int orderId, List<OrderItemInput>? items, CancellationToken ct = default)
+    // Zapisuje pełną listę pozycji zamówienia (dodaje nowe, zmienia ilości, usuwa brakujące) oraz uwagi
+    public async Task<OrderOperationResult> SaveItemsAsync(int orderId, List<OrderItemInput>? items, string? notes, CancellationToken ct = default)
     {
         if (userContext.IsMaster) return OrderOperationResult.ReadOnly;
 
         var (validation, validItems) = await ValidateItemsAsync(items, ct);
         if (validation.Status != OrderOperationStatus.Ok) return validation;
+
+        var (notesValidation, normalizedNotes) = ValidateNotes(notes);
+        if (notesValidation.Status != OrderOperationStatus.Ok) return notesValidation;
 
         var order = await db.Orders
             .Include(o => o.OrderItems)
@@ -71,6 +79,8 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
 
         if (order == null) return OrderOperationResult.NotFound;
         if (order.Status != EditableStatus) return OrderOperationResult.NotEditable;
+
+        order.Notes = normalizedNotes;
 
         var wanted = validItems.ToDictionary(i => i.ArticleId, i => i.Quantity);
 
@@ -221,6 +231,7 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
                 o.Status == EditableStatus && !isMaster,
                 o.Tenant!.Code,
                 o.Tenant!.CompanyName,
+                o.Notes,
                 o.OrderItems
                     .OrderBy(i => i.OrderItemId)
                     .Select(i => new OrderItemDto(
@@ -281,6 +292,17 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
         }
 
         return (OrderOperationResult.Ok, merged);
+    }
+
+    // Uwagi: przycinamy spacje, pusty tekst = brak uwag, limit długości jak kolumna w bazie
+    private static (OrderOperationResult Result, string? Notes) ValidateNotes(string? notes)
+    {
+        var trimmed = string.IsNullOrWhiteSpace(notes) ? null : notes.Trim();
+
+        if (trimmed != null && trimmed.Length > Order.NotesMaxLength)
+            return (OrderOperationResult.Invalid("NotesTooLong", $"Uwagi mogą mieć najwyżej {Order.NotesMaxLength} znaków."), null);
+
+        return (OrderOperationResult.Ok, trimmed);
     }
 
     // Ustala, dlaczego warunkowa zmiana statusu nie objęła żadnego wiersza

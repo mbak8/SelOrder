@@ -27,8 +27,12 @@ interface OrderDetail {
   isEditable: boolean; // Decyduje serwer: edycja tylko w statusie "W opracowaniu" (i nie dla tenanta nadrzędnego)
   clientCode: string;
   clientName: string;
+  notes?: string | null; // Uwagi do zamówienia
   items: OrderItem[];
 }
+
+// Limit długości uwag (jak kolumna Orders.Notes i walidacja na serwerze)
+const NOTES_MAX_LENGTH = 1000;
 
 // Pozycja w trakcie edycji: ilość trzymamy jako tekst, żeby dało się wpisać np. "1,"
 interface EditableItem extends OrderItem {
@@ -97,6 +101,7 @@ export const OrderDetailsPage = () => {
   // Stan edycji
   const [items, setItems] = useState<EditableItem[]>([]);
   const [isDirty, setIsDirty] = useState(false);
+  const [notes, setNotes] = useState('');
   const [busy, setBusy] = useState(false);
   // isInfo: komunikat informacyjny (niebieski), np. "artykuł jest już na liście"
   const [message, setMessage] = useState<{ text: string; isError: boolean; isInfo?: boolean } | null>(null);
@@ -115,6 +120,7 @@ export const OrderDetailsPage = () => {
   const applyOrder = (data: OrderDetail) => {
     setOrder(data);
     setItems(toEditable(data.items));
+    setNotes(data.notes ?? '');
     setIsDirty(false);
   };
 
@@ -133,6 +139,7 @@ export const OrderDetailsPage = () => {
         const response = await apiClient.get<OrderDetail>(`/api/orders/${id}`);
         setOrder(response.data);
         setItems(toEditable(response.data.items));
+        setNotes(response.data.notes ?? '');
         setIsDirty(false);
       } catch (error) {
         console.error("Nie znaleziono zamówienia", error);
@@ -276,8 +283,15 @@ export const OrderDetailsPage = () => {
     items: items.map(i => ({
       articleId: i.articleId,
       quantity: parseQuantity(i.quantityText, i.decimalPlaces)
-    }))
+    })),
+    notes: notes.trim() || null
   });
+
+  const changeNotes = (text: string) => {
+    setNotes(text);
+    setIsDirty(true);
+    setMessage(null);
+  };
 
   // Nowe zamówienie: utworzenie (serwer nadaje numer). Istniejące: zapis pozycji.
   // Zwraca id zapisanego zamówienia.
@@ -622,6 +636,40 @@ export const OrderDetailsPage = () => {
           {t('Order.NoItems', 'Brak pozycji. Dodaj artykuł, aby zapisać zamówienie.')}
         </div>
       )}
+
+      {/* UWAGI - edycja w statusie "W opracowaniu", w pozostałych tylko podgląd */}
+      <div style={{ marginTop: 25, maxWidth: 800 }}>
+        <label htmlFor="order-notes" style={{ display: 'block', marginBottom: 5, fontWeight: 'bold' }}>
+          {t('Order.Notes', 'Uwagi')}
+        </label>
+        {isEditMode ? (
+          <>
+            <textarea
+              id="order-notes"
+              value={notes}
+              onChange={(e) => changeNotes(e.target.value)}
+              maxLength={NOTES_MAX_LENGTH}
+              rows={4}
+              placeholder={t('Order.NotesPlaceholder', 'Uwagi do zamówienia...')}
+              style={{
+                width: '100%', padding: '8px', boxSizing: 'border-box', resize: 'vertical',
+                border: '1px solid #ccc', borderRadius: '4px', fontFamily: 'inherit', fontSize: '0.95em',
+                backgroundColor: 'white', color: '#333' // globalny styl pól ma biały tekst
+              }}
+            />
+            <div style={{ textAlign: 'right', fontSize: '0.8em', color: notes.length >= NOTES_MAX_LENGTH ? '#d32f2f' : '#888' }}>
+              {notes.length} / {NOTES_MAX_LENGTH}
+            </div>
+          </>
+        ) : (
+          <div style={{
+              padding: '10px', background: '#f9f9f9', border: '1px solid #eee', borderRadius: '4px',
+              whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', color: order.notes ? '#333' : '#888'
+          }}>
+            {order.notes || t('Order.NoNotes', 'Brak uwag')}
+          </div>
+        )}
+      </div>
 
       {/* Komunikat po operacji */}
       {message && (

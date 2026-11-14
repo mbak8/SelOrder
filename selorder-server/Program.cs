@@ -211,16 +211,16 @@ app.MapGet("/api/orders", async (OrderService service, HttpContext context) =>
 // Tworzy nowe zamówienie z pozycjami i nadaje mu numer (ZS/{KOD}/{ROK}/{NR})
 app.MapPost("/api/orders", async (SaveOrderItemsRequest request, OrderService service) =>
 {
-    var (result, created) = await service.CreateOrderAsync(request.Items);
+    var (result, created) = await service.CreateOrderAsync(request.Items, request.Notes);
     return created is not null
         ? Results.Created($"/api/orders/{created.Id}", created)
         : result.ToHttpResult();
 })
 .RequireAuthorization();
 
-// Zapis pozycji zamówienia (tylko w statusie "W opracowaniu", lista nie może być pusta)
+// Zapis pozycji i uwag zamówienia (tylko w statusie "W opracowaniu", lista pozycji nie może być pusta)
 app.MapPut("/api/orders/{id:int}/items", async (int id, SaveOrderItemsRequest request, OrderService service) =>
-    (await service.SaveItemsAsync(id, request.Items)).ToHttpResult())
+    (await service.SaveItemsAsync(id, request.Items, request.Notes)).ToHttpResult())
 .RequireAuthorization();
 
 // Zatwierdzenie zamówienia: "W opracowaniu" -> "Zatwierdzone" (wymaga pozycji)

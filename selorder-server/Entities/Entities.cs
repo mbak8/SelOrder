@@ -104,6 +104,12 @@ public class Order : ITenantAware
 
     public DateTimeOffset OrderDate { get; set; } = DateTimeOffset.UtcNow;
 
+    // Uwagi klienta do zamówienia (edytowalne razem z pozycjami w statusie "W opracowaniu")
+    [MaxLength(Order.NotesMaxLength)]
+    public string? Notes { get; set; }
+
+    public const int NotesMaxLength = 1000;
+
     // Nawigacja
     [ForeignKey(nameof(TenantId))]
     public Tenant? Tenant { get; set; }
