@@ -1,4 +1,4 @@
-﻿namespace SelOrder.Server.DTOs;
+namespace SelOrder.Server.DTOs;
 
 // 1. DTO do wyświetlania profilu (READ)
 // Odzwierciedla bezpieczne dane z tabeli Users

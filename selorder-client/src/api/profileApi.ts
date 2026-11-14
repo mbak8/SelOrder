@@ -1,9 +1,8 @@
-// src/api/profileApi.ts
-import { apiClient } from './client'; // Importujemy klienta z pliku obok
+import { apiClient } from './client'; // Importujemy zaktualizowanego klienta z pliku obok
 
 // --- TYPY DANYCH ---
 export interface UserProfile {
-  userId: number;
+  userId: number | string;
   login: string;
   firstName: string;
   lastName: string;

@@ -8,3 +8,4 @@
 /selorder-integration/selorder-integration/obj
 /selorder-integration/selorder-integration/bin
 /selorder-integration/.vs
+*.bak

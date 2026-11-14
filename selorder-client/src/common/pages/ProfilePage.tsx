@@ -3,6 +3,8 @@ import { profileApi, type UserProfile } from '../../api/profileApi';
 import { useTranslations } from '../context/TranslationContext'; // Import hooka
 
 const ProfilePage: React.FC = () => {
+  const { t, changeLanguage } = useTranslations();
+
   // Stan formularza danych
   const [profile, setProfile] = useState<UserProfile>({
     userId: 0,
@@ -21,8 +23,7 @@ const ProfilePage: React.FC = () => {
   });
 
   const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState<{text: string, type: 'success'|'error'} | null>(null);
-  const { changeLanguage } = useTranslations();
+  const [message, setMessage] = useState<{ text: string, type: 'success' | 'error' } | null>(null);
 
   // Pobranie danych przy wejściu
   useEffect(() => {
@@ -59,10 +60,14 @@ const ProfilePage: React.FC = () => {
     setMessage(null);
     try {
       await profileApi.updateProfile(profile);
-      changeLanguage(profile.languageCode);
-      setMessage({ text: 'Dane zapisane pomyślnie.', type: 'success' });
+      changeLanguage(profile.languageCode); // Natychmiastowa zmiana języka interfejsu
+
+      // Opcjonalnie: Zaktualizuj localStorage, żeby język przetrwał odświeżenie strony (F5)
+      localStorage.setItem('language', profile.languageCode);
+
+      setMessage({ text: t('Profile.SuccessSave'), type: 'success' });
     } catch {
-      setMessage({ text: 'Błąd zapisu danych.', type: 'error' });
+      setMessage({ text: t('Profile.ErrorSave'), type: 'error' });
     }
   };
 
@@ -72,35 +77,35 @@ const ProfilePage: React.FC = () => {
     setMessage(null);
 
     if (passwordData.new !== passwordData.confirm) {
-      setMessage({ text: 'Nowe hasła muszą być identyczne.', type: 'error' });
+      setMessage({ text: t('Profile.ErrorPasswordMatch'), type: 'error' });
       return;
     }
 
     try {
-      await profileApi.changePassword({ 
-        currentPassword: passwordData.current, 
-        newPassword: passwordData.new 
+      await profileApi.changePassword({
+        currentPassword: passwordData.current,
+        newPassword: passwordData.new
       });
-      setMessage({ text: 'Hasło zostało zmienione.', type: 'success' });
+      setMessage({ text: t('Profile.SuccessPasswordChange'), type: 'success' });
       setPasswordData({ current: '', new: '', confirm: '' });
     } catch {
-      setMessage({ text: 'Nie udało się zmienić hasła (sprawdź stare hasło).', type: 'error' });
+      setMessage({ text: t('Profile.ErrorPasswordChange'), type: 'error' });
     }
   };
 
-  if (loading) return <div style={{padding: 20}}>Ładowanie...</div>;
+  if (loading) return <div style={{ padding: 20 }}>{t('Common.Loading')}</div>;
 
   return (
     <div className="details-view-container">
-      <h2 className="section-title">Mój Profil</h2>
+      <h2 className="section-title">{t('Profile.Title')}</h2>
 
       {/* Komunikat sukcesu/błędu */}
       {message && (
         <div style={{
-          padding: '15px', marginBottom: '20px', borderRadius: '8px',
-          backgroundColor: message.type === 'success' ? '#d4edda' : '#f8d7da',
-          color: message.type === 'success' ? '#155724' : '#721c24',
-          border: `1px solid ${message.type === 'success' ? '#c3e6cb' : '#f5c6cb'}`
+          padding: '16px', marginBottom: '20px', borderRadius: '12px',
+          backgroundColor: message.type === 'success' ? 'var(--color-primary-container)' : 'var(--color-error-container)',
+          color: message.type === 'success' ? 'var(--color-on-primary-container)' : 'var(--color-on-error-container)',
+          border: `1px solid ${message.type === 'success' ? 'var(--color-primary)' : 'var(--color-error)'}`
         }}>
           {message.text}
         </div>
@@ -108,45 +113,43 @@ const ProfilePage: React.FC = () => {
 
       {/* KARTA 1: DANE PODSTAWOWE */}
       <div className="data-card">
-        <h3>Dane użytkownika</h3>
-        <form onSubmit={handleSaveProfile}>
+        <h3>{t('Profile.UserData')}</h3>
+        <form onSubmit={handleSaveProfile} noValidate>
           <div className="form-grid-2">
             <div className="form-row">
-              <label className="form-label">Imię</label>
-              <input 
-                className="form-input" 
+              <label className="form-label">{t('Profile.FirstName')}</label>
+              <input
+                className="form-input"
                 value={profile.firstName}
-                required
-                onInvalid={(e) => (e.target as HTMLInputElement).setCustomValidity('To pole jest wymagane!')}
-                onChange={e => setProfile({...profile, firstName: e.target.value})}
+                onChange={e => setProfile({ ...profile, firstName: e.target.value })}
               />
             </div>
             <div className="form-row">
-              <label className="form-label">Nazwisko</label>
-              <input 
-                className="form-input" 
+              <label className="form-label">{t('Profile.LastName')}</label>
+              <input
+                className="form-input"
                 value={profile.lastName}
-                onChange={e => setProfile({...profile, lastName: e.target.value})}
+                onChange={e => setProfile({ ...profile, lastName: e.target.value })}
               />
             </div>
           </div>
 
           <div className="form-row">
-            <label className="form-label">Email</label>
-            <input 
-              className="form-input" 
-              type="email"              
+            <label className="form-label">{t('Profile.Email')}</label>
+            <input
+              className="form-input"
+              type="email"
               value={profile.email}
-              onChange={e => setProfile({...profile, email: e.target.value})}
+              onChange={e => setProfile({ ...profile, email: e.target.value })}
             />
           </div>
 
           <div className="form-row">
-            <label className="form-label">Język aplikacji</label>
-            <select 
+            <label className="form-label">{t('Profile.Language')}</label>
+            <select
               className="form-input"
               value={profile.languageCode}
-              onChange={e => setProfile({...profile, languageCode: e.target.value})}
+              onChange={e => setProfile({ ...profile, languageCode: e.target.value })}
             >
               <option value="PL">Polski</option>
               <option value="EN">English</option>
@@ -155,51 +158,46 @@ const ProfilePage: React.FC = () => {
             </select>
           </div>
 
-          <button type="submit" className="action-btn">Zapisz zmiany</button>
+          <button type="submit" className="action-btn">{t('Profile.Save')}</button>
         </form>
       </div>
 
       {/* KARTA 2: ZMIANA HASŁA */}
       <div className="data-card">
-        <h3>Bezpieczeństwo</h3>
-        <form onSubmit={handleChangePassword}>
+        <h3>{t('Profile.Security')}</h3>
+        <form onSubmit={handleChangePassword} noValidate>
           <div className="form-row">
-            <label className="form-label">Obecne hasło</label>
-            <input 
-              className="form-input" 
+            <label className="form-label">{t('Profile.CurrentPassword')}</label>
+            <input
+              className="form-input"
               type="password"
-              required
               value={passwordData.current}
-              onChange={e => setPasswordData({...passwordData, current: e.target.value})}
+              onChange={e => setPasswordData({ ...passwordData, current: e.target.value })}
             />
           </div>
 
           <div className="form-grid-2">
             <div className="form-row">
-              <label className="form-label">Nowe hasło</label>
-              <input 
-                className="form-input" 
+              <label className="form-label">{t('Profile.NewPassword')}</label>
+              <input
+                className="form-input"
                 type="password"
-                required
-                minLength={5}
                 value={passwordData.new}
-                onChange={e => setPasswordData({...passwordData, new: e.target.value})}
+                onChange={e => setPasswordData({ ...passwordData, new: e.target.value })}
               />
             </div>
             <div className="form-row">
-              <label className="form-label">Powtórz nowe hasło</label>
-              <input 
-                className="form-input" 
+              <label className="form-label">{t('Profile.ConfirmPassword')}</label>
+              <input
+                className="form-input"
                 type="password"
-                required
-                minLength={5}
                 value={passwordData.confirm}
-                onChange={e => setPasswordData({...passwordData, confirm: e.target.value})}
+                onChange={e => setPasswordData({ ...passwordData, confirm: e.target.value })}
               />
             </div>
           </div>
 
-          <button type="submit" className="action-btn">Zmień hasło</button>
+          <button type="submit" className="action-btn">{t('Profile.ChangePasswordBtn')}</button>
         </form>
       </div>
 

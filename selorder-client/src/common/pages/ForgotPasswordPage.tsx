@@ -5,7 +5,7 @@ import { useTranslations } from '../context/TranslationContext';
 import logo from '../../assets/agroselnet-logo-color.svg';
 
 export const ForgotPasswordPage = () => {
-  const { language, changeLanguage } = useTranslations();
+  const { t, language, changeLanguage } = useTranslations();
 
   const [email, setEmail] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -17,18 +17,19 @@ export const ForgotPasswordPage = () => {
     setMessage(null);
 
     try {
-      // Endpoint, który stworzyliśmy w C#
       await apiClient.post('/api/auth/forgot-password', { email });
       
-      // Sukces - wyświetlamy komunikat (nawet jeśli maila nie ma w bazie, dla bezpieczeństwa)
       setMessage({ 
-        text: 'Jeśli podany adres istnieje w bazie, wysłaliśmy na niego link do resetu hasła.', 
+        text: t('Auth.Forgot.SuccessMessage'), 
         type: 'success' 
       });
-      setEmail(""); // Czyścimy pole
+      setEmail(""); 
     } catch (err) {
       console.error(err);
-      setMessage({ text: 'Wystąpił błąd połączenia.', type: 'error' });
+      setMessage({ 
+        text: t('Auth.Forgot.ErrorMessage'), 
+        type: 'error' 
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -40,39 +41,33 @@ export const ForgotPasswordPage = () => {
       display: 'flex', 
       justifyContent: 'center', 
       alignItems: 'center', 
-      background: '#f0f2f5' 
+      background: 'var(--color-surface)' 
     }}>
       <div style={{ 
         width: '100%', 
         maxWidth: 400, 
         padding: 40, 
-        background: 'white', 
-        borderRadius: 8, 
+        background: 'var(--color-surface-container-lowest)', 
+        borderRadius: 16, 
         boxShadow: '0 4px 12px rgba(0,0,0,0.1)' 
       }}>
-        {/* LOGO I NAGŁÓWEK */}
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', width: '100%' }}>
             <img src={logo} alt="Logo" className="logo-image" />
         </div>
-        <div style={{ textAlign: 'center', margin: '0px', padding: '0px', marginBottom: '20px' }}>
-            <h1>
-              <span style={{ color: '#4ab26b' }}>Sel</span>
-              <span style={{ color: '#000000' }}>Order</span>
-            </h1>
-            <p style={{ color: '#666', fontSize: '0.9em' }}>Reset hasła</p>
+        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+            <h1 style={{ color: 'var(--color-on-surface)'}}>{t('Auth.Forgot.Title')}</h1>
         </div>
         
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
+        <form onSubmit={handleSubmit} noValidate style={{ display: 'flex', flexDirection: 'column', gap: 15 }}>
           <div>
-            <label style={{ display: 'block', marginBottom: 5, fontSize: '0.9em', color: '#666' }}>
-              Adres Email
+            <label style={{ display: 'block', marginBottom: 5, fontSize: '0.9em', color: 'var(--color-on-surface-variant)' }}>
+              {t('Auth.Forgot.EmailLabel')}
             </label>
             <input 
-              type="email" 
-              required
+              type="email"
               value={email} 
               onChange={e => setEmail(e.target.value)} 
-              style={{ width: '100%', padding: 10, borderRadius: 4, border: '1px solid #ddd', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: 10, borderRadius: 8, border: '1px solid var(--color-outline-variant)', boxSizing: 'border-box', background: 'var(--color-surface-container-lowest)', color: 'var(--color-on-surface)' }}
               disabled={isSubmitting}
             />
           </div>
@@ -83,53 +78,51 @@ export const ForgotPasswordPage = () => {
             style={{ 
               marginTop: 10,
               padding: 12, 
-              background: isSubmitting ? '#ccc' : '#4ab26b',
-              color: 'white', 
+              background: isSubmitting ? 'var(--color-outline-variant)' : 'var(--color-primary)',
+              color: isSubmitting ? 'var(--color-on-surface-variant)' : 'var(--color-on-primary)', 
               border: 'none', 
-              borderRadius: 4, 
+              borderRadius: 8, 
               cursor: isSubmitting ? 'not-allowed' : 'pointer',
               fontWeight: 'bold'
             }}
           >
-            {isSubmitting ? 'Wysyłanie...' : 'Wyślij link resetujący'}
+            {isSubmitting ? t('Common.Loading') : t('Auth.Forgot.Submit')}
           </button>
         </form>
 
-        {/* POWRÓT DO LOGOWANIA */}
         <div style={{ textAlign: 'center', marginTop: 15 }}>
-            <Link to="/login" style={{ color: '#4ab26b', textDecoration: 'none', fontSize: '0.9em' }}>
-                &larr; Wróć do logowania
+            <Link to="/login" style={{ color: 'var(--color-primary)', textDecoration: 'none', fontSize: '0.9em' }}>
+                &larr; {t('Auth.Forgot.BackToLogin')}
             </Link>
         </div>
 
-        {/* KOMUNIKATY */}
         {message && (
           <div style={{ 
             marginTop: 20, 
             padding: 10, 
-            borderRadius: 4, 
+            borderRadius: 8, 
             textAlign: 'center',
-            background: message.type === 'success' ? '#e8f5e9' : '#ffebee',
-            color: message.type === 'success' ? '#2e7d32' : '#c62828'
+            background: message.type === 'success' ? 'var(--color-primary-container)' : 'var(--color-error-container)',
+            color: message.type === 'success' ? 'var(--color-on-primary-container)' : 'var(--color-on-error-container)'
           }}>
             {message.text}
           </div>
         )}
 
-        {/* PRZEŁĄCZNIK JĘZYKA */}
-        <div style={{ marginTop: 30, borderTop: '1px solid #eee', paddingTop: 15, textAlign: 'center' }}>
-            <span style={{ fontSize: '0.85em', color: '#888', marginRight: 10 }}>Language / Język:</span>
+        <div style={{ marginTop: 30, borderTop: '1px solid var(--color-outline-variant)', paddingTop: 15, textAlign: 'center' }}>
+            <span style={{ fontSize: '0.85em', color: 'var(--color-on-surface-variant)', marginRight: 10 }}>
+              {t('Common.LanguageLabel')}
+            </span>
             <select 
               value={language}
               onChange={(e) => changeLanguage(e.target.value)}
-              style={{ padding: '5px', borderRadius: '4px', border: '1px solid #ccc' }}
+              style={{ padding: '8px', borderRadius: '8px', border: '1px solid var(--color-outline-variant)', background: 'var(--color-surface-container-lowest)', color: 'var(--color-on-surface)' }}
             >
               <option value="PL">Polski</option>
               <option value="EN">English</option>
               <option value="DE">Deutsch</option>
             </select>
         </div>
-
       </div>
     </div>
   );

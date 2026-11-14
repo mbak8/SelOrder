@@ -1,10 +1,10 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 
 namespace Services;
 
 public interface IAppUserContext
 {
-    int? TenantId { get; }
+    Guid? TenantId { get; }
     int? UserId { get; }
     string LanguageCode { get; }
     bool IsAuthenticated { get; }
@@ -19,8 +19,8 @@ public class AppUserContext(IHttpContextAccessor httpContextAccessor) : IAppUser
 
     // Pobieramy TenantId z Tokena JWT. 
     // Jeśli usera nie ma, null.
-    public int? TenantId =>
-        int.TryParse(_user?.FindFirst("TenantId")?.Value, out var id) ? id : null;
+    public Guid? TenantId =>
+        Guid.TryParse(_user?.FindFirst("TenantId")?.Value, out var id) ? id : null;
 
     public int? UserId =>
         int.TryParse(_user?.FindFirst(ClaimTypes.NameIdentifier)?.Value, out var id) ? id : null;

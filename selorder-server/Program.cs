@@ -1,16 +1,22 @@
-﻿using Data;
+using Data;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Mvc; // Potrzebne do [FromBody] i Results
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Resend;
 using Services;
 using System.Text;
 using SelOrder.Server.DTOs;
 
+var options = new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = AppContext.BaseDirectory
+};
 
-var builder = WebApplication.CreateBuilder(args);
+var builder = WebApplication.CreateBuilder(options);
 
-// 1. Baza Danych
+// 1. Baza Danych (SQL Server)
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -19,17 +25,22 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<IAppUserContext, AppUserContext>();
 
 // 3. Cache i Serwisy
-builder.Services.AddHybridCache(); // (Dla .NET 9)
+builder.Services.AddHybridCache();
 
-// --- POPRAWKA TUTAJ: ---
-// Zmieniamy z Singleton na Scoped, bo serwis korzysta z Bazy i UserContext
+builder.Services.AddOptions<ResendClientOptions>().BindConfiguration("Resend");
+builder.Services.AddHttpClient<ResendClient>();
+builder.Services.AddTransient<IResend, ResendClient>();
+
 builder.Services.AddScoped<TranslationService>();
-// -----------------------
+builder.Services.AddScoped<ArticleService>();
+builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<UserService>();
+builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<IAuthService, AuthService>();
 
 // 4. Auth
 var jwtKey = builder.Configuration["JwtSettings:SecretKey"];
 
-// Ważne: Sprawdźmy czy klucz nie jest pusty (pomoże w debugowaniu)
 if (string.IsNullOrEmpty(jwtKey))
 {
     throw new Exception("BŁĄD: Nie znaleziono klucza 'JwtSettings:SecretKey' w appsettings.json!");
@@ -44,20 +55,14 @@ builder.Services.AddAuthentication(options =>
 {
     options.TokenValidationParameters = new TokenValidationParameters
     {
-        // Sprawdzamy czy klucz jest poprawny (TO JEST NAJWAŻNIEJSZE)
         ValidateIssuerSigningKey = true,
         IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtKey)),
-
-        // Na devie wyłączamy sprawdzanie Issuera i Audience (częsty powód błędów 401)
         ValidateIssuer = false,
         ValidateAudience = false,
-
-        // Zmniejszamy margines błędu czasu (domyślnie 5 min), żeby token wygasał precyzyjnie
         ClockSkew = TimeSpan.Zero
     };
 });
 builder.Services.AddAuthorization();
-builder.Services.AddScoped<IAuthService, AuthService>();
 
 // 5. CORS
 builder.Services.AddCors(options =>
@@ -70,40 +75,22 @@ builder.Services.AddCors(options =>
     });
 });
 
-
-
-
-
-builder.Services.AddScoped<ArticleService>();
-builder.Services.AddScoped<OrderService>();
-builder.Services.AddScoped<UserService>();
-builder.Services.AddScoped<EmailService>();
-
 var app = builder.Build();
 
+app.UseCors("AllowAll");
+app.UseAuthentication();
+app.UseAuthorization();
 
 // ==========================================
-// SEKCJA MIDDLEWARE (Kolejność jest ważna!)
+// SEKCJA ENDPOINTÓW
 // ==========================================
-
-app.UseCors("AllowAll"); // 1. Najpierw CORS
-app.UseAuthentication(); // 2. Potem sprawdzamy kim jesteś
-app.UseAuthorization();  // 3. Potem co możesz robić
-
-
-
-// ==========================================
-// SEKCJA ENDPOINTÓW (Tu wklej endpointy!)
-// ==========================================
-
-// Program.cs
 
 app.MapGet("/api/translations", async (TranslationService service, string? lang) =>
 {
     var dictionary = await service.GetAppDictionaryAsync(lang);
     return Results.Ok(dictionary);
 })
-.AllowAnonymous();  
+.AllowAnonymous();
 
 app.MapPost("/api/login", async (
     [FromBody] LoginRequest request,
@@ -117,13 +104,10 @@ app.MapPost("/api/login", async (
         return Results.Unauthorized();
     }
 
-    // --- ZMIANA TUTAJ: WERYFIKACJA HASHU ---
-    // Najpierw sprawdzamy, czy hasło w bazie to Hash BCrypta (zaczyna się od $2a$, $2b$ itp.)
     bool isPasswordValid = false;
 
-    if (user.PasswordHash.StartsWith("$"))
+    if (user.PasswordHash != null && user.PasswordHash.StartsWith("$"))
     {
-        // Jeśli w bazie jest hash, używamy weryfikacji BCrypt
         try
         {
             isPasswordValid = BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash);
@@ -132,7 +116,6 @@ app.MapPost("/api/login", async (
     }
     else
     {
-        // Fallback: Jeśli w bazie masz stare hasła w czystym tekście (dla kompatybilności na start)
         isPasswordValid = user.PasswordHash == request.Password;
     }
 
@@ -140,7 +123,6 @@ app.MapPost("/api/login", async (
     {
         return Results.Unauthorized();
     }
-    // ---------------------------------------
 
     var token = authService.GenerateJwtToken(user);
 
@@ -152,22 +134,18 @@ app.MapPost("/api/login", async (
         TenantId = user.TenantId
     });
 });
-// 1. User prosi o reset (wysyłamy maila)
+
+// 1. User prosi o reset (wysyłamy maila przez Resend)
 app.MapPost("/api/auth/forgot-password", async (
     [FromBody] ForgotPasswordRequest req,
     UserService userService,
     EmailService emailService) =>
 {
-    // Tutaj wpisz adres swojego Frontendu (Reacta)
     string frontendUrl = "http://localhost:5173";
-
     await userService.InitiatePasswordResetAsync(req.Email, frontendUrl, emailService);
-
-    // Zawsze zwracamy OK, nawet jak maila nie ma w bazie (Security)
     return Results.Ok(new { message = "Jeśli mail istnieje, wysłaliśmy instrukcję." });
 })
 .AllowAnonymous();
-
 
 // 2. User klika w link i ustawia nowe hasło
 app.MapPost("/api/auth/reset-password", async (
@@ -183,43 +161,18 @@ app.MapPost("/api/auth/reset-password", async (
 })
 .AllowAnonymous();
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-app.MapGet("/api/articles", async (ArticleService service) =>
-{
-    return await service.GetAllArticlesAsync();
-})
-.RequireAuthorization();
-*/
 app.MapGet("/api/articles", async (ArticleService service, HttpContext context) =>
 {
-    // 1. Pobierz parametry techniczne (stronicowanie)
     int page = int.TryParse(context.Request.Query["page"], out var p) ? p : 1;
     int pageSize = int.TryParse(context.Request.Query["pageSize"], out var ps) ? ps : 20;
 
-    // 2. Resztę parametrów zapakuj do słownika filtrów
     var filters = context.Request.Query
-        .Where(q => q.Key.ToLower() != "page" && q.Key.ToLower() != "pagesize") // Ignoruj parametry stronicowania
+        .Where(q => q.Key.ToLower() != "page" && q.Key.ToLower() != "pagesize")
         .ToDictionary(
             q => q.Key,
             q => q.Value.ToString()
         );
 
-    // 3. Wywołaj serwis
     return await service.GetArticlesPagedAsync(page, pageSize, filters);
 })
 .RequireAuthorization();
@@ -244,10 +197,7 @@ app.MapGet("/api/orders/{id:int}", async (int id, OrderService service) =>
 })
 .RequireAuthorization();
 
-
-// ==========================================
-// 2. ENDPOINT TESTOWY (Wymaga zalogowania)
-// ==========================================
+// Endpoint testowy
 app.MapGet("/api/me", (IAppUserContext context) =>
 {
     return Results.Ok(new
@@ -257,16 +207,9 @@ app.MapGet("/api/me", (IAppUserContext context) =>
         MyTenant = context.TenantId,
         MyLanguage = context.LanguageCode
     });
-}).RequireAuthorization(); // <--- To kluczowe! Blokuje dostęp bez tokena
+}).RequireAuthorization();
 
-
-
-
-// ==========================================
-// ENDPOINTY PROFILU (Minimal API)
-// ==========================================
-
-// 1. Pobierz mój profil
+// Endpointy profilu
 app.MapGet("/api/profile/me", async (UserService service, CancellationToken ct) =>
 {
     var user = await service.GetCurrentUserProfileAsync(ct);
@@ -274,7 +217,6 @@ app.MapGet("/api/profile/me", async (UserService service, CancellationToken ct) 
 })
 .RequireAuthorization();
 
-// 2. Aktualizuj dane (Imię, Nazwisko, Język)
 app.MapPut("/api/profile/me", async ([FromBody] UpdateUserDto dto, UserService service, CancellationToken ct) =>
 {
     await service.UpdateCurrentUserProfileAsync(dto, ct);
@@ -282,7 +224,6 @@ app.MapPut("/api/profile/me", async ([FromBody] UpdateUserDto dto, UserService s
 })
 .RequireAuthorization();
 
-// 3. Zmień hasło
 app.MapPut("/api/profile/password", async ([FromBody] ChangePasswordDto dto, UserService service, CancellationToken ct) =>
 {
     var success = await service.ChangePasswordAsync(dto, ct);
@@ -296,48 +237,8 @@ app.MapPut("/api/profile/password", async ([FromBody] ChangePasswordDto dto, Use
 })
 .RequireAuthorization();
 
-
-
-
-
-
-// --- ENDPOINTY (Minimal API) ---
-
-// Endpoint dla Handlowca (Pobiera listę artykułów z przetłumaczonymi jednostkami)
-/*
-app.MapGet("/api/catalog", async (
-    AppDbContext db,
-    TranslationService translator) =>
-{
-    // 1. Pobieramy wspólne artykuły
-    var articles = await db.Articles.ToListAsync();
-
-    // 2. Mapujemy wyniki używając Cache'a do tłumaczeń
-    var result = new List<object>();
-    foreach (var art in articles)
-    {
-        // Nie podajemy języka! TranslationService bierze go z kontekstu usera (Tokena)
-        var unitName = await translator.GetUnitNameAsync(art.UnitId);
-
-        result.Add(new
-        {
-            art.Name,
-            art.Code,
-            DisplayQuantity = $"{art.QuantityAvailable} {unitName}"
-        });
-    }
-
-    return Results.Ok(result);
-}).RequireAuthorization(); // Wymaga zalogowania (Usera z TenantId i Language)
-
-*/
-
-
-
-
 app.Run("http://0.0.0.0:5000");
 
-// Prosty DTO do przesyłania danych logowania
 public record LoginRequest(string Login, string Password);
 
 public class PageRequest

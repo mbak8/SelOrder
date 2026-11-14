@@ -1,4 +1,4 @@
-﻿using Data;
+using Data;
 using Microsoft.EntityFrameworkCore;
 using BCrypt.Net;
 using SelOrder.Server.DTOs;
@@ -59,7 +59,7 @@ public class UserService(AppDbContext db, IAppUserContext userContext)
         // 1. Sprawdź obecne hasło
         // Uwaga: Obsługujemy sytuację, gdy stare hasło w bazie jest Plain Textem (dla pierwszego logowania)
         bool isCurrentValid = false;
-        if (user.PasswordHash.StartsWith("$"))
+        if (!string.IsNullOrEmpty(user.PasswordHash) && user.PasswordHash.StartsWith("$"))
         {
             isCurrentValid = BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash);
         }

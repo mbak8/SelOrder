@@ -29,18 +29,17 @@ apiClient.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       console.warn("Sesja wygasła lub token jest nieprawidłowy. Wylogowywanie...");
       
-      // A. Wyczyść śmieci
+      // A. Wyczyść śmieci (Dodajemy tenantId dla pełnego bezpieczeństwa)
       localStorage.removeItem('token');
-      localStorage.removeItem('login'); // Dodane zgodnie z wcześniejszymi ustaleniami
+      localStorage.removeItem('login'); 
+      localStorage.removeItem('tenantId');
       
-      // B. Jeśli nie jesteśmy już na stronie logowania, przekieruj nas tam
-      if (window.location.pathname !== '/login') {
-        // Używamy window.location dla twardego resetu stanu aplikacji
-        window.location.href = '/login'; 
-      }
+      // B. Zamiast twardego przeładowania strony, emitujemy zdarzenie.
+      // Plik App.tsx nasłuchuje na to zdarzenie i wykona "miękkie" wylogowanie w tle.
+      window.dispatchEvent(new Event('auth-unauthorized'));
     }
     
-    // Zwróć błąd dalej, żeby komponent mógł go obsłużyć
+    // Zwróć błąd dalej, żeby komponent mógł go obsłużyć (np. wyświetlić komunikat)
     return Promise.reject(error);
   }
 );

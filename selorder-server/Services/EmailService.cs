@@ -1,37 +1,24 @@
-﻿using System.Net;
-using System.Net.Mail;
+using Resend;
 
 namespace Services;
 
-public class EmailService(IConfiguration config)
+public class EmailService(IResend resend, IConfiguration config)
 {
+    private readonly string _fromEmail = config["EmailSettings:From"] ?? string.Empty;
+
     public async Task SendPasswordResetEmailAsync(string toEmail, string resetLink)
     {
-        var settings = config.GetSection("SmtpSettings");
-
-        var smtpClient = new SmtpClient(settings["Host"])
-        {
-            Port = int.Parse(settings["Port"]),
-            Credentials = new NetworkCredential(settings["User"], settings["Password"]),
-            EnableSsl = bool.Parse(settings["EnableSsl"]),
-        };
-
-        var mailMessage = new MailMessage
-        {
-            From = new MailAddress(settings["SenderEmail"], settings["SenderName"]),
-            Subject = "Resetowanie hasła - SelOrder",
-            Body = $@"
+        var message = new EmailMessage();
+        message.From = _fromEmail;
+        message.To.Add(toEmail);
+        message.Subject = "Resetowanie hasła - SelOrder";
+        message.HtmlBody = $@"
                 <h2>Cześć!</h2>
                 <p>Otrzymaliśmy prośbę o reset hasła.</p>
                 <p>Kliknij poniższy link, aby ustawić nowe hasło (link ważny 1 godzinę):</p>
                 <a href='{resetLink}'>ZRESETUJ HASŁO</a>
                 <br/><br/>
-                <p>Jeśli to nie Ty, zignoruj tę wiadomość.</p>",
-            IsBodyHtml = true,
-        };
-
-        mailMessage.To.Add(toEmail);
-
-        await smtpClient.SendMailAsync(mailMessage);
+                <p>Jeśli to nie Ty, zignoruj tę wiadomość.</p>";
+        await resend.EmailSendAsync(message);
     }
 }

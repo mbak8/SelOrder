@@ -1,8 +1,8 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { apiClient } from '../../api/client';
 
 interface TranslationContextType {
-  t: (key: string) => string;
+  t: (key: string, fallback?: string) => string;
   loading: boolean;
   language: string;             // Obecny język
   changeLanguage: (lang: string) => void; // Funkcja do zmiany języka
@@ -13,7 +13,7 @@ const TranslationContext = createContext<TranslationContextType | undefined>(und
 const getBrowserLanguage = () => {
   const browserLang = navigator.language || navigator.languages[0]; // np. "pl-PL" lub "en-US"
   const code = browserLang.split('-')[0].toUpperCase(); // bierzemy tylko "PL", "EN"
-  
+
   // Sprawdzamy, czy obsługujemy ten język (żeby nie ustawić np. chińskiego)
   const supportedLanguages = ['PL', 'EN', 'DE', "RU"]; 
   return supportedLanguages.includes(code) ? code : 'PL'; // Fallback do PL
@@ -25,23 +25,24 @@ export const TranslationProvider = ({ children }: { children: ReactNode }) => {
     const saved = localStorage.getItem('language');
     const initialLang = saved || getBrowserLanguage();
     apiClient.defaults.headers.common['Accept-Language'] = initialLang;
-    
+    document.documentElement.lang = initialLang.toLowerCase();
     return initialLang;
-});
+  });
 
-  
+
   const [translations, setTranslations] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
 
-  // 2. Funkcja zmiany języka
-  const changeLanguage = (newLang: string) => {
+  // 2. Funkcja zmiany języka (stabilna referencja dzięki useCallback)
+  const changeLanguage = useCallback((newLang: string) => {
     setLanguageState(newLang);
-    localStorage.setItem('language', newLang); // Zapisujemy, żeby po odświeżeniu strony język został
-apiClient.defaults.headers.common['Accept-Language'] = newLang;
-  };
+    localStorage.setItem('language', newLang);
+    apiClient.defaults.headers.common['Accept-Language'] = newLang;
+    document.documentElement.lang = newLang.toLowerCase(); // Przeglądarka pokaże walidację w tym języku
+  }, []);
 
   // 3. Ten useEffect odpali się TERAZ przy każdej zmianie zmiennej 'language'
-  
+
   useEffect(() => {
     const fetchTranslations = async () => {
       setLoading(true);
@@ -49,10 +50,10 @@ apiClient.defaults.headers.common['Accept-Language'] = newLang;
         // Używamy zmiennej ze stanu (language), a nie localStorage
         const response = await apiClient.get<Record<string, string>>(`/api/translations?lang=${language}`);
         setTranslations(response.data);
-        
+
         // Opcjonalnie: Jeśli API wymaga nagłówka Accept-Language
         //apiClient.defaults.headers.common['Accept-Language'] = language;
-        
+
       } catch (err) {
         console.error("Błąd pobierania tłumaczeń", err);
       } finally {
@@ -63,9 +64,9 @@ apiClient.defaults.headers.common['Accept-Language'] = newLang;
     fetchTranslations();
   }, [language]); // <--- KLUCZOWE: Tablica zależności zawiera 'language'
 
-  const t = (key: string): string => {
-    return translations[key] || key;
-  };
+  const t = useCallback((key: string, fallback?: string): string => {
+    return translations[key] || fallback || key;
+  }, [translations]);
 
   return (
     <TranslationContext.Provider value={{ t, loading, language, changeLanguage }}>
