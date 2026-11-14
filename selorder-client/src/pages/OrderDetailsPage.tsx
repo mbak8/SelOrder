@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router';
 import axios from 'axios';
 import { apiClient } from '../api/client';
 import { DataGrid, type Column } from '../common/components/DataGrid';
+import { ConfirmDialog } from '../common/components/ConfirmDialog';
 import { useTranslations } from '../common/context/TranslationContext';
 
 // 1. Definicja typów (zgodna z DTO w C#)
@@ -72,6 +73,7 @@ export const OrderDetailsPage = () => {
   const [isDirty, setIsDirty] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ text: string; isError: boolean } | null>(null);
+  const [pendingAction, setPendingAction] = useState<'approve' | 'cancel' | 'leave' | null>(null);
 
   // Wyszukiwarka artykułów
   const [search, setSearch] = useState('');
@@ -219,8 +221,8 @@ export const OrderDetailsPage = () => {
     }
   };
 
-  const handleApprove = async () => {
-    if (!window.confirm(t('Order.ConfirmApprove', 'Zatwierdzić zamówienie? Po zatwierdzeniu nie będzie można go edytować.'))) return;
+  // Wykonywane dopiero po potwierdzeniu w oknie ConfirmDialog
+  const approveOrder = async () => {
     setBusy(true);
     try {
       // Niezapisane zmiany zapisujemy przed zatwierdzeniem
@@ -235,8 +237,7 @@ export const OrderDetailsPage = () => {
     }
   };
 
-  const handleCancelOrder = async () => {
-    if (!window.confirm(t('Order.ConfirmCancel', 'Anulować zamówienie? Tej operacji nie można cofnąć.'))) return;
+  const cancelOrder = async () => {
     setBusy(true);
     try {
       await apiClient.post(`/api/orders/${id}/cancel`);
@@ -250,9 +251,45 @@ export const OrderDetailsPage = () => {
   };
 
   const handleBack = () => {
-    if (isDirty && !window.confirm(t('Order.UnsavedChanges', 'Masz niezapisane zmiany. Opuścić stronę?'))) return;
+    if (isDirty) {
+      setPendingAction('leave');
+      return;
+    }
     navigate('/orders');
   };
+
+  // Akcja czekająca na potwierdzenie w oknie dialogowym
+  const closeDialog = useCallback(() => setPendingAction(null), []);
+
+  const confirmPendingAction = () => {
+    const action = pendingAction;
+    setPendingAction(null);
+    if (action === 'approve') approveOrder();
+    else if (action === 'cancel') cancelOrder();
+    else if (action === 'leave') navigate('/orders');
+  };
+
+  const dialogConfig = {
+    approve: {
+      title: t('Order.Approve', 'Zatwierdź'),
+      message: t('Order.ConfirmApprove', 'Zatwierdzić zamówienie? Po zatwierdzeniu nie będzie można go edytować.'),
+      confirmLabel: t('Order.Approve', 'Zatwierdź'),
+      danger: false
+    },
+    cancel: {
+      title: t('Order.Cancel', 'Anuluj zamówienie'),
+      message: t('Order.ConfirmCancel', 'Anulować zamówienie? Tej operacji nie można cofnąć.'),
+      confirmLabel: t('Order.Cancel', 'Anuluj zamówienie'),
+      danger: true
+    },
+    leave: {
+      title: undefined,
+      message: t('Order.UnsavedChanges', 'Masz niezapisane zmiany. Opuścić stronę?'),
+      confirmLabel: t('Order.LeavePage', 'Opuść stronę'),
+      danger: true
+    }
+  };
+  const dialog = pendingAction ? dialogConfig[pendingAction] : null;
 
   // 3. Kolumny dla tabeli pozycji
   const columns: Column<EditableItem>[] = useMemo(() => {
@@ -473,15 +510,27 @@ export const OrderDetailsPage = () => {
           <button onClick={handleSave} disabled={!canSave || !isDirty} style={buttonStyle('#007bff', canSave && isDirty)}>
             {t('General.Save', 'Zapisz')}
           </button>
-          <button onClick={handleApprove} disabled={!canSave} style={buttonStyle('#2e7d32', canSave)}>
+          <button onClick={() => setPendingAction('approve')} disabled={!canSave} style={buttonStyle('#2e7d32', canSave)}>
             {t('Order.Approve', 'Zatwierdź')}
           </button>
           <div style={{ flex: 1 }} />
-          <button onClick={handleCancelOrder} disabled={busy} style={buttonStyle('#d32f2f', !busy)}>
+          <button onClick={() => setPendingAction('cancel')} disabled={busy} style={buttonStyle('#d32f2f', !busy)}>
             {t('Order.Cancel', 'Anuluj zamówienie')}
           </button>
         </div>
       )}
+
+      {/* Potwierdzenie zatwierdzenia / anulowania / wyjścia bez zapisu */}
+      <ConfirmDialog
+        open={dialog !== null}
+        title={dialog?.title}
+        message={dialog?.message ?? ''}
+        confirmLabel={dialog?.confirmLabel ?? ''}
+        cancelLabel={t('General.Back', 'Wróć')}
+        danger={dialog?.danger}
+        onConfirm={confirmPendingAction}
+        onCancel={closeDialog}
+      />
     </div>
   );
 };
