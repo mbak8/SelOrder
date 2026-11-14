@@ -27,7 +27,7 @@ public class Tenant
 
     public bool IsActive { get; set; } = true;
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public ICollection<User> Users { get; set; } = [];
     public ICollection<Order> Orders { get; set; } = [];
@@ -65,7 +65,7 @@ public class User : ITenantAware
     [MaxLength(100)]
     public string? ResetToken { get; set; }
 
-    public DateTime? ResetTokenExpires { get; set; }
+    public DateTimeOffset? ResetTokenExpires { get; set; }
 
     // Nawigacja
     [ForeignKey(nameof(TenantId))]
@@ -98,7 +98,7 @@ public class Order : ITenantAware
     [MaxLength(50)]
     public string? ERPDocName { get; set; }
 
-    public DateTime OrderDate { get; set; } = DateTime.UtcNow;
+    public DateTimeOffset OrderDate { get; set; } = DateTimeOffset.UtcNow;
 
     // Nawigacja
     [ForeignKey(nameof(TenantId))]

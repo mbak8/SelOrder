@@ -5,7 +5,7 @@ namespace DTOs;
 public record OrderDto(
     int Id,
     string Number,
-    DateTime Date,
+    DateTimeOffset Date,   // Zawsze UTC (+00:00); klient przelicza na czas lokalny
     int StatusId,          // Np. 5
     string StatusName,     // Np. "Zatwierdzone" (Tłumaczenie)
     string? ERPDocument,   // Nazwa dokumentu w ERP (np. ZK/2023/1)

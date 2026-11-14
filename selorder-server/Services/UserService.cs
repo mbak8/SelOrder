@@ -103,7 +103,7 @@ public class UserService(AppDbContext db, IAppUserContext userContext)
 
         // Zapisujemy w bazie (ważny 1h)
         user.ResetToken = token;
-        user.ResetTokenExpires = DateTime.UtcNow.AddHours(1);
+        user.ResetTokenExpires = DateTimeOffset.UtcNow.AddHours(1);
 
         await db.SaveChangesAsync();
 
@@ -121,7 +121,7 @@ public class UserService(AppDbContext db, IAppUserContext userContext)
         var user = await db.Users.FirstOrDefaultAsync(u => u.ResetToken == token);
 
         // Sprawdzamy czy token istnieje i czy nie wygasł
-        if (user == null || !user.IsActive || user.ResetTokenExpires < DateTime.UtcNow)
+        if (user == null || !user.IsActive || user.ResetTokenExpires < DateTimeOffset.UtcNow)
         {
             return false; // Token nieważny
         }

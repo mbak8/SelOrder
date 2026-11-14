@@ -11,6 +11,9 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
     // Jedyny status, w którym zamówienie można edytować, zatwierdzić lub anulować
     private const OrderStatus EditableStatus = OrderStatus.InPreparation;
 
+    // Strefa czasowa, wg której liczymy rok w numerze zamówienia (ZS/{KOD}/{ROK}/{NR})
+    private static readonly TimeZoneInfo NumberingTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/Warsaw");
+
     // Tworzy nowe zamówienie (status "W opracowaniu") z pozycjami i od razu nadaje mu numer.
     // Zamówienie bez pozycji nie zostanie zapisane.
     public async Task<(OrderOperationResult Result, OrderCreatedDto? Created)> CreateOrderAsync(
@@ -26,14 +29,17 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
         // Licznik i zamówienie w jednej transakcji – jeśli zapis się nie uda, numer nie przepada
         await using var tx = await db.Database.BeginTransactionAsync(ct);
 
-        // Rok liczymy wg czasu lokalnego serwera, żeby zamówienie z 1 stycznia po północy
-        // nie dostało numeru z poprzedniego roku (OrderDate jest w UTC)
-        var number = await numberGenerator.NextAsync(tenantId, DateTime.Now.Year, ct);
+        // Data zamówienia zawsze w UTC. Rok do numeru liczymy wg czasu polskiego (niezależnie od strefy
+        // serwera), żeby zamówienie z 1 stycznia po północy nie dostało numeru z poprzedniego roku.
+        var orderDate = DateTimeOffset.UtcNow;
+        var year = TimeZoneInfo.ConvertTime(orderDate, NumberingTimeZone).Year;
+        var number = await numberGenerator.NextAsync(tenantId, year, ct);
 
         var order = new Order
         {
             TenantId = tenantId,
             UserId = userId,
+            OrderDate = orderDate,
             OrderNumber = number,
             Status = OrderStatus.InPreparation,
             OrderItems = validItems
@@ -131,8 +137,11 @@ public class OrderService(AppDbContext db, IAppUserContext userContext, OrderNum
 
         int totalCount = await query.CountAsync(ct);
 
-        // 3. Sortowanie (Domyślnie od najnowszych)
-        query = query.OrderByDescending(o => o.OrderDate);
+        // 3. Sortowanie po numerze zamówienia malejąco (najnowsze na górze).
+        // Nie sortujemy po tekście OrderNumber, bo "ZS/AGRO/2026/1000" < "ZS/AGRO/2026/999".
+        // OrderId rośnie w tej samej kolejności co numer: numer jest pobierany z licznika
+        // w tej samej transakcji co INSERT, a licznik jest zablokowany do jej końca.
+        query = query.OrderByDescending(o => o.OrderId);
 
         // 4. Stronicowanie (Obsługa pobierania wszystkiego przy -1)
         if (pageSize > 0)

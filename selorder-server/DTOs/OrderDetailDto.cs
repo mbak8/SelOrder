@@ -15,7 +15,7 @@ public record OrderItemDto(
 public record OrderDetailDto(
     int OrderId,
     string OrderNumber,
-    DateTime OrderDate,
+    DateTimeOffset OrderDate, // Zawsze UTC (+00:00); klient przelicza na czas lokalny
     int StatusId,
     string StatusName,
     string? ERPDocument,

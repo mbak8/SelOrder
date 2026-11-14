@@ -201,7 +201,7 @@ CREATE TABLE [dbo].[Orders](
 	[StatusDescription] [nvarchar](512) NULL,
 	[ERPDocId] [int] NULL,
 	[ERPDocName] [nvarchar](50) NULL,
-	[OrderDate] [datetime2](2) NOT NULL,
+	[OrderDate] [datetimeoffset](2) NOT NULL, -- zawsze UTC (+00:00)
 PRIMARY KEY CLUSTERED 
 (
 	[OrderId] ASC
@@ -217,7 +217,7 @@ CREATE TABLE [dbo].[Tenants](
 	[TenantId] [uniqueidentifier] NOT NULL,
 	[CompanyName] [nvarchar](255) NOT NULL,
 	[IsActive] [bit] NOT NULL,
-	[CreatedAt] [datetime2](7) NOT NULL,
+	[CreatedAt] [datetimeoffset](7) NOT NULL, -- zawsze UTC (+00:00)
 	[Code] [nvarchar](10) NOT NULL,
 PRIMARY KEY CLUSTERED
 (
@@ -284,7 +284,7 @@ CREATE TABLE [dbo].[Users](
 	[IsActive] [bit] NOT NULL,
 	[LanguageCode] [char](2) NOT NULL,
 	[ResetToken] [nvarchar](100) NULL,
-	[ResetTokenExpires] [datetime2](7) NULL,
+	[ResetTokenExpires] [datetimeoffset](7) NULL, -- zawsze UTC (+00:00)
 PRIMARY KEY CLUSTERED 
 (
 	[UserId] ASC
@@ -330,14 +330,14 @@ CREATE NONCLUSTERED INDEX [IX_Orders_ERPDocId] ON [dbo].[Orders]
 WHERE ([ERPDocId] IS NOT NULL)
 WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 GO
-/****** Object:  Index [IX_Orders_Tenant_User_Date]    Script Date: 25.10.2026 21:31:51 ******/
-CREATE NONCLUSTERED INDEX [IX_Orders_Tenant_User_Date] ON [dbo].[Orders]
+/****** Object:  Index [IX_Orders_Tenant] ******/
+-- Lista zamówień: filtr po tenancie, sortowanie po OrderId malejąco (klucz klastrowy jest
+-- automatycznie dołączany do klucza indeksu, więc kolejność (TenantId, OrderId) jest gratis)
+CREATE NONCLUSTERED INDEX [IX_Orders_Tenant] ON [dbo].[Orders]
 (
-	[TenantId] ASC,
-	[UserId] ASC,
-	[OrderDate] DESC
+	[TenantId] ASC
 )
-INCLUDE([OrderNumber],[Status],[ERPDocName]) WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+INCLUDE([OrderNumber],[OrderDate],[Status],[ERPDocName],[StatusDescription]) WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 GO
 SET ANSI_PADDING ON
 GO
@@ -410,11 +410,11 @@ ALTER TABLE [dbo].[OrderItems] ADD  DEFAULT ((0)) FOR [Quantity]
 GO
 ALTER TABLE [dbo].[Orders] ADD  DEFAULT ((0)) FOR [Status]
 GO
-ALTER TABLE [dbo].[Orders] ADD  DEFAULT (sysdatetime()) FOR [OrderDate]
+ALTER TABLE [dbo].[Orders] ADD  CONSTRAINT [DF_Orders_OrderDate]  DEFAULT (sysutcdatetime()) FOR [OrderDate]
 GO
 ALTER TABLE [dbo].[Tenants] ADD  DEFAULT ((1)) FOR [IsActive]
 GO
-ALTER TABLE [dbo].[Tenants] ADD  DEFAULT (getdate()) FOR [CreatedAt]
+ALTER TABLE [dbo].[Tenants] ADD  CONSTRAINT [DF_Tenants_CreatedAt]  DEFAULT (sysutcdatetime()) FOR [CreatedAt]
 GO
 ALTER TABLE [dbo].[Units] ADD  DEFAULT ((0)) FOR [DecimalPlaces]
 GO
