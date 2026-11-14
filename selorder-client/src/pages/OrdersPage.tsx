@@ -187,8 +187,29 @@ export const OrdersPage = () => {
 
   return (
     <div style={{ padding: '20px' }}>
-      <h2>📄 {t('Menu.Orders')} ({totalItems})</h2>
-      
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 15, flexWrap: 'wrap' }}>
+        <h2>📄 {t('Menu.Orders')} ({totalItems})</h2>
+
+        {/* Nowe zamówienie - tylko zwykli klienci; tenant nadrzędny ma wyłącznie podgląd */}
+        {!isMaster && (
+          <button
+            onClick={() => navigate('/orders/new')}
+            style={{
+              padding: '8px 18px',
+              cursor: 'pointer',
+              backgroundColor: '#2e7d32',
+              color: 'white',
+              border: 'none',
+              borderRadius: '4px',
+              fontSize: '0.95em',
+              fontWeight: 'bold'
+            }}
+          >
+            + {t('Order.New', 'Nowe zamówienie')}
+          </button>
+        )}
+      </div>
+
       <div style={{ marginTop: 20 }}>
         <DataGrid 
           data={orders} 

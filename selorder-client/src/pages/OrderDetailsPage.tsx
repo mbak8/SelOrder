@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo, useCallback, type CSSProperties } from 'react';
-import { useParams, useNavigate } from 'react-router';
+import { useParams, useNavigate, Navigate } from 'react-router';
 import axios from 'axios';
 import { apiClient, isMasterUser } from '../api/client';
 import { DataGrid, type Column } from '../common/components/DataGrid';
@@ -62,14 +62,37 @@ const parseQuantity = (text: string, decimalPlaces: number): number | null => {
 const toEditable = (items: OrderItem[]): EditableItem[] =>
   items.map(i => ({ ...i, quantityText: String(i.quantity) }));
 
+// Odpowiedź serwera po utworzeniu zamówienia (OrderCreatedDto)
+interface OrderCreated {
+  id: number;
+  number: string;
+}
+
+// Nowe zamówienie (adres /orders/new) istnieje tylko w przeglądarce, dopóki nie zostanie zapisane.
+// Numer nadaje serwer przy pierwszym zapisie.
+const newOrderDraft = (): OrderDetail => ({
+  orderId: 0,
+  orderNumber: '',
+  orderDate: new Date().toISOString(),
+  statusId: 0,
+  statusName: '',
+  isEditable: true,
+  clientCode: '',
+  clientName: '',
+  items: []
+});
+
 export const OrderDetailsPage = () => {
   const { t } = useTranslations();
   const { id } = useParams(); // Pobieramy ID z adresu URL (np. "15")
   const navigate = useNavigate();
   const [isMaster] = useState(isMasterUser);
 
-  const [order, setOrder] = useState<OrderDetail | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Tryb tworzenia nowego zamówienia (tylko zwykli klienci - tenant nadrzędny ma wyłącznie podgląd)
+  const isNew = id === 'new';
+
+  const [order, setOrder] = useState<OrderDetail | null>(() => (isNew ? newOrderDraft() : null));
+  const [loading, setLoading] = useState(!isNew);
 
   // Stan edycji
   const [items, setItems] = useState<EditableItem[]>([]);
@@ -97,7 +120,7 @@ export const OrderDetailsPage = () => {
   };
 
   useEffect(() => {
-    if (!id) return;
+    if (!id || id === 'new') return;
 
     const fetchOrder = async () => {
       try {
@@ -202,19 +225,39 @@ export const OrderDetailsPage = () => {
   const canSave = isEditMode && !busy && items.length > 0 && !hasInvalidQuantity;
 
   // --- Zapis / Zatwierdzenie / Anulowanie ---
-  const saveItems = async () => {
-    await apiClient.put(`/api/orders/${id}/items`, {
-      items: items.map(i => ({
-        articleId: i.articleId,
-        quantity: parseQuantity(i.quantityText, i.decimalPlaces)
-      }))
-    });
+  const itemsPayload = () => ({
+    items: items.map(i => ({
+      articleId: i.articleId,
+      quantity: parseQuantity(i.quantityText, i.decimalPlaces)
+    }))
+  });
+
+  // Nowe zamówienie: utworzenie (serwer nadaje numer). Istniejące: zapis pozycji.
+  // Zwraca id zapisanego zamówienia.
+  const persistOrder = async (): Promise<OrderCreated | null> => {
+    if (isNew) {
+      const response = await apiClient.post<OrderCreated>('/api/orders', itemsPayload());
+      return response.data;
+    }
+    await apiClient.put(`/api/orders/${id}/items`, itemsPayload());
+    return null;
+  };
+
+  // Po utworzeniu przechodzimy pod adres zapisanego zamówienia (bez wpisu w historii dla /orders/new)
+  const openCreatedOrder = (created: OrderCreated) => {
+    setIsDirty(false);
+    setMessage({ text: `${t('Order.Created', 'Utworzono zamówienie')} ${created.number}`, isError: false });
+    navigate(`/orders/${created.id}`, { replace: true });
   };
 
   const handleSave = async () => {
     setBusy(true);
     try {
-      await saveItems();
+      const created = await persistOrder();
+      if (created) {
+        openCreatedOrder(created);
+        return;
+      }
       await reloadOrder();
       setMessage({ text: t('Order.Saved', 'Zapisano zmiany.'), isError: false });
     } catch (err) {
@@ -227,13 +270,22 @@ export const OrderDetailsPage = () => {
   // Wykonywane dopiero po potwierdzeniu w oknie ConfirmDialog
   const approveOrder = async () => {
     setBusy(true);
+    let created: OrderCreated | null = null;
     try {
-      // Niezapisane zmiany zapisujemy przed zatwierdzeniem
-      if (isDirty) await saveItems();
-      await apiClient.post(`/api/orders/${id}/approve`);
+      // Niezapisane zmiany (lub nowe zamówienie) zapisujemy przed zatwierdzeniem
+      created = (isNew || isDirty) ? await persistOrder() : null;
+      const orderId = created ? created.id : id;
+      await apiClient.post(`/api/orders/${orderId}/approve`);
+      if (created) {
+        openCreatedOrder(created);
+        return;
+      }
       await reloadOrder();
       setMessage(null);
     } catch (err) {
+      // Zamówienie utworzone, ale zatwierdzenie się nie udało -> i tak przechodzimy do zapisanego zamówienia,
+      // żeby ponowny zapis nie utworzył duplikatu
+      if (created) openCreatedOrder(created);
       setMessage({ text: errorText(err), isError: true });
     } finally {
       setBusy(false);
@@ -379,6 +431,9 @@ export const OrderDetailsPage = () => {
     }
   };
 
+  // Tenant nadrzędny nie tworzy zamówień (serwer i tak odrzuci zapis) - wracamy do listy
+  if (isNew && isMaster) return <Navigate to="/orders" replace />;
+
   if (loading && !order) return <div style={{ padding: 20 }}>{t('Order.Loading', 'Ładowanie zamówienia...')}</div>;
   if (!order) return <div style={{ padding: 20 }}>{t('Order.NotFound', 'Nie znaleziono zamówienia.')}</div>;
 
@@ -414,7 +469,7 @@ export const OrderDetailsPage = () => {
           alignItems: 'center'
       }}>
         <div>
-            <h2 style={{ margin: '0 0 10px 0' }}>{order.orderNumber}</h2>
+            <h2 style={{ margin: '0 0 10px 0' }}>{isNew ? t('Order.New', 'Nowe zamówienie') : order.orderNumber}</h2>
             {/* Tenant nadrzędny przegląda zamówienia różnych klientów - pokazujemy czyje to zamówienie */}
             {isMaster && (
                 <div style={{ color: '#666', marginBottom: 5 }}>
@@ -438,7 +493,7 @@ export const OrderDetailsPage = () => {
                 fontWeight: 'bold',
                 color: statusColor(order.statusId)
             }}>
-                {order.statusName}
+                {isNew ? t('Order.NotSaved', 'Niezapisane') : order.statusName}
             </div>
         </div>
       </div>
@@ -523,9 +578,12 @@ export const OrderDetailsPage = () => {
             {t('Order.Approve', 'Zatwierdź')}
           </button>
           <div style={{ flex: 1 }} />
-          <button onClick={() => setPendingAction('cancel')} disabled={busy} style={buttonStyle('#d32f2f', !busy)}>
-            {t('Order.Cancel', 'Anuluj zamówienie')}
-          </button>
+          {/* Niezapisanego zamówienia nie ma czego anulować - wystarczy z niego wyjść */}
+          {!isNew && (
+            <button onClick={() => setPendingAction('cancel')} disabled={busy} style={buttonStyle('#d32f2f', !busy)}>
+              {t('Order.Cancel', 'Anuluj zamówienie')}
+            </button>
+          )}
         </div>
       )}
 
