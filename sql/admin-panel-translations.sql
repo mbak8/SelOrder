@@ -17,7 +17,7 @@ INSERT INTO @t (TranslationKey, LanguageCode, TranslatedText) VALUES
 (N'Menu.Admin',                   'PL', N'Administracja'),
 (N'Menu.Admin',                   'EN', N'Administration'),
 (N'Menu.Admin',                   'DE', N'Administration'),
-(N'Menu.Admin',                   'RU', N'Администрирование'),
+(N'Menu.Admin',                   'RU', N'Админ-панель'), -- krótko: "Администрирование" nie mieści się w menu bocznym
 
 -- Wspólne
 (N'Admin.Clients',                'PL', N'Klienci'),
@@ -237,4 +237,11 @@ WHERE EXISTS (SELECT 1 FROM dbo.Languages l WHERE l.LanguageCode = s.LanguageCod
                   WHERE a.TranslationKey = s.TranslationKey AND a.LanguageCode = s.LanguageCode);
 
 PRINT CONCAT('Dodano tłumaczeń: ', @@ROWCOUNT);
+
+-- Korekta bazy, w których skrypt był już uruchomiony: stara, za długa rosyjska nazwa pozycji menu
+UPDATE dbo.AppTranslations
+SET TranslatedText = N'Админ-панель'
+WHERE TranslationKey = N'Menu.Admin' AND LanguageCode = 'RU' AND TranslatedText = N'Администрирование';
+
+PRINT CONCAT('Poprawiono tłumaczeń: ', @@ROWCOUNT);
 GO

@@ -115,17 +115,18 @@ export const DataGrid = <T,>({
             <span>
                 {t('Grid.Records')}: <strong>{totalItems}</strong> | {t('Grid.Page')} <strong>{page}</strong> {t('Grid.Of')} {totalPages}
             </span>
-            <div style={{ display: 'flex', gap: 5 }}>
-                <button 
-                    disabled={page === 1} 
-                    onClick={() => onPageChange!(page - 1)}
-                    style={{ cursor: 'pointer', padding: '5px 10px' }}>
+            {/* Wygląd przycisków (w tym stan nieaktywny) w DataGrid.css: .datagrid-btn */}
+            <div className="datagrid-footer-buttons">
+                <button
+                    className="datagrid-btn"
+                    disabled={page === 1}
+                    onClick={() => onPageChange!(page - 1)}>
                     {t('Grid.Previous')}
                 </button>
-                <button 
-                    disabled={page >= totalPages} 
-                    onClick={() => onPageChange!(page + 1)}
-                    style={{ cursor: 'pointer', padding: '5px 10px' }}>
+                <button
+                    className="datagrid-btn"
+                    disabled={page >= totalPages}
+                    onClick={() => onPageChange!(page + 1)}>
                     {t('Grid.Next')}
                 </button>
             </div>

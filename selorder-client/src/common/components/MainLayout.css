@@ -50,7 +50,8 @@
 
 /* --- 4. SIDEBAR (MENU BOCZNE) --- */
 .sidebar {
-  width: 170px;
+  /* 200px: pozycje menu mieszczą się w jednej linii w PL/EN/DE (najdłuższa: "Administration" pogrubione) */
+  width: 200px;
   background-color: #f8f9fa;
   border-right: 1px solid #ddd;
   flex-shrink: 0;
@@ -88,14 +89,27 @@
 }
 
 /* --- LINKI W MENU --- */
+/* Ikona i etykieta obok siebie: gdy etykieta jest za długa, zawija się obok ikony, a nie pod nią */
 .menu-item {
-  display: block;
-  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 10px;
   margin-bottom: 5px;
   text-decoration: none;
   color: #333333;
   border-radius: 4px;
   transition: background-color 0.2s;
+}
+
+.menu-icon {
+  flex-shrink: 0;
+}
+
+/* Zabezpieczenie: słowo dłuższe niż menu (np. RU "Администрирование") łamie się w ramce, zamiast wychodzić poza nią */
+.menu-label {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .menu-item:hover {
@@ -241,7 +255,7 @@
     position: fixed;
     top: 0;
     left: 0;
-    width: 170px;
+    width: 200px;
     height: 100dvh;
     z-index: 1000; /* Sidebar (1000) przykryje Header (900) */
     background-color: #fff;

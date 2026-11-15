@@ -86,7 +86,8 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
               className={({ isActive }) => isActive ? "menu-item active" : "menu-item"}
               onClick={closeMenu}
             >
-              🛒 {t('Menu.Orders')}
+              <span className="menu-icon" aria-hidden="true">🛒</span>
+              <span className="menu-label">{t('Menu.Orders')}</span>
             </NavLink>
 
             <NavLink 
@@ -94,7 +95,8 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
               className={({ isActive }) => isActive ? "menu-item active" : "menu-item"}
               onClick={closeMenu}
             >
-              📦 {t('Menu.Articles')}
+              <span className="menu-icon" aria-hidden="true">📦</span>
+              <span className="menu-label">{t('Menu.Articles')}</span>
             </NavLink>
 
             {/* Panel administratora - tylko tenant nadrzędny (uprawnienia i tak sprawdza serwer) */}
@@ -104,7 +106,8 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
                 className={({ isActive }) => isActive ? "menu-item active" : "menu-item"}
                 onClick={closeMenu}
               >
-                🛠️ {t('Menu.Admin', 'Administracja')}
+                <span className="menu-icon" aria-hidden="true">🛠️</span>
+                <span className="menu-label">{t('Menu.Admin', 'Administracja')}</span>
               </NavLink>
             )}
           </nav>
@@ -120,7 +123,8 @@ export const MainLayout = ({ children, onLogout, username, t }: MainLayoutProps)
               onClick={closeMenu}
               // Dodajemy margines, żeby oddzielić go od przycisku Wyloguj
             >
-              ⚙️ {t('General.Profile') || 'Mój Profil'}
+              <span className="menu-icon" aria-hidden="true">⚙️</span>
+              <span className="menu-label">{t('General.Profile') || 'Mój Profil'}</span>
             </NavLink>
 
                     <div style={{ marginBottom: 15, borderTop: '1px solid #eee', textAlign: 'center' }}>
