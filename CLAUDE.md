@@ -9,6 +9,7 @@ SelOrder is a multi-tenant B2B ordering portal (articles/stock, orders, user pro
 - `selorder-server/` — ASP.NET Core Minimal API (.NET 11, `net11.0-windows`), EF Core + SQL Server, JWT auth, Resend for e-mail.
 - `selorder-client/` — React 19 + TypeScript + Vite SPA, `react-router` v8, axios.
 - `selorder-integration/` — .NET 11 console job (Dapper + DeepL) that fills missing article translations directly in the DB. Intended to grow into ERP sync jobs.
+- `selorder-shared/` — plain `.cs` files (no project) compiled into both .NET projects via `<Compile Include=... Link=...>`; currently only `Email/OrderEmailTemplate.cs`. Keep them dependency-free (only the BCL).
 - `database.sql` — full SQL Server schema script. There are **no EF migrations**; schema changes go into the DB/this script and the entities in `selorder-server/Entities/` are kept in sync by hand.
 
 Code comments, log messages and API messages are in Polish; keep that convention.
@@ -31,7 +32,7 @@ cd selorder-client && npm run build   # tsc -b + vite build (this is the type-ch
 cd selorder-client && npm run lint
 ```
 
-Integration job (needs `ConnectionStrings:DefaultConnection` and `DeepL:ApiKey` in its `appsettings.Local.json`):
+Integration job (needs `ConnectionStrings:DefaultConnection` and `DeepL:ApiKey` in its `appsettings.Local.json`; order e-mails also need `Resend:ApiToken` and `Notifications:SuperAdminEmail`):
 
 ```bash
 cd selorder-integration/selorder-integration && dotnet run
@@ -51,7 +52,8 @@ There is no automated test suite.
 - **Translated data pattern**: entity tables have companion `*Translations` tables (`ArticlesTranslations`, `UnitTranslations`); services project with a subquery `Translations.Where(t => t.LanguageCode == lang).Select(t => t.Name).FirstOrDefault() ?? <fallback name>` (see `ArticleService`). UI strings come from `AppTranslations` via `TranslationService`, cached in `HybridCache` under `app-dict-{lang}` with tag `translations`.
 - **Paged list endpoints** (`/api/articles`, `/api/orders`): `page` and `pageSize` query params are taken out, every other query param becomes a filter passed to `QueryableExtensions.ApplyDynamicFilters`, which matches a property name case-insensitively and applies `string.Contains` (string properties only; unknown keys are ignored). Results are wrapped in `PagedResult<T>`; `pageSize <= 0` disables paging.
 - **Login**: `/api/login` matches the identifier against `Users.Login`, then `Users.Email` (DB collation `Polish_CI_AS`, so case-insensitive). Email is unique (`UQ_Users_Email`, filtered on NOT NULL) and `UserService.UpdateCurrentUserProfileAsync` returns false on a duplicate. Only BCrypt hashes (`$2…`) are accepted; plain-text passwords are rejected. Inactive users or inactive tenants get the same 401 as bad credentials (checked after the password) and cannot reset passwords.
-- Config: secrets (`ConnectionStrings:DefaultConnection`, `JwtSettings:SecretKey` — startup throws if missing, `Resend:ApiToken`; in the integration job `DeepL:ApiKey`) live in a gitignored `appsettings.Local.json` next to `appsettings.json`, which keeps empty placeholders. Never put real secrets in `appsettings.json` — a Resend key leaked that way. The forgot-password endpoint hard-codes the frontend URL `http://localhost:5173`.
+- **E-mails** (Resend, sender `EmailSettings:From`): texts come from `AppTranslations` keys `Email.*` with a Polish fallback in code; all HTML values must be `WebUtility.HtmlEncode`d. Password reset (`EmailService`) goes out in the reset dialog's language (`Accept-Language`). Order e-mails share `selorder-shared/Email/OrderEmailTemplate.cs` (logo + header + items table, `Email.Order.*`; the logo `agroselnet-logo.png` is an `EmbeddedResource` with LogicalName `SelOrder.Shared.Email.agroselnet-logo.png` in both projects and goes out as an inline CID attachment from `OrderEmailMessage.InlineImages`; the "Client" row is shown only to master-tenant recipients): the server's `OrderEmailService` sends the confirmation after `/approve` succeeds (to the approver in the UI language and the order's author in their account language; send failures are only logged), and the integration's `OrderNotificationService` holds `SendOrderExportedAsync` (master-tenant users + `Notifications:SuperAdminEmail`) and `SendOrderExportFailedAsync` (super admin only) for the future ERP export job.
+- Config: secrets (`ConnectionStrings:DefaultConnection`, `JwtSettings:SecretKey` — startup throws if missing, `Resend:ApiToken`; in the integration job `DeepL:ApiKey`, `Resend:ApiToken`, `Notifications:SuperAdminEmail`) live in a gitignored `appsettings.Local.json` next to `appsettings.json`, which keeps empty placeholders. Never put real secrets in `appsettings.json` — a Resend key leaked that way. The forgot-password endpoint hard-codes the frontend URL `http://localhost:5173`.
 
 ## Client architecture
 

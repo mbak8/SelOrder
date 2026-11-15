@@ -14,7 +14,14 @@
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.2" />
     <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="11.0.0" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="11.0.0" />
+    <PackageReference Include="Resend" Version="0.26.0" />
     <PackageReference Include="System.Security.Cryptography.Pkcs" Version="11.0.0" />
+  </ItemGroup>
+
+  <!-- Wspólny szablon maili o zamówieniach i logo do nich (używa ich też selorder-server) -->
+  <ItemGroup>
+    <Compile Include="..\..\selorder-shared\Email\OrderEmailTemplate.cs" Link="Shared\Email\OrderEmailTemplate.cs" />
+    <EmbeddedResource Include="..\..\selorder-shared\Email\agroselnet-logo.png" Link="Shared\Email\agroselnet-logo.png" LogicalName="SelOrder.Shared.Email.agroselnet-logo.png" />
   </ItemGroup>
 
   <ItemGroup>

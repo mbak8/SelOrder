@@ -41,6 +41,7 @@ builder.Services.AddScoped<OrderNumberGenerator>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<EmailService>();
+builder.Services.AddScoped<OrderEmailService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<AdminService>();
 
@@ -228,9 +229,15 @@ app.MapPut("/api/orders/{id:int}/items", async (int id, SaveOrderItemsRequest re
     (await service.SaveItemsAsync(id, request.Items, request.Notes)).ToHttpResult())
 .RequireAuthorization();
 
-// Zatwierdzenie zamówienia: "W opracowaniu" -> "Zatwierdzone" (wymaga pozycji)
-app.MapPost("/api/orders/{id:int}/approve", async (int id, OrderService service) =>
-    (await service.ApproveAsync(id)).ToHttpResult())
+// Zatwierdzenie zamówienia: "W opracowaniu" -> "Zatwierdzone" (wymaga pozycji).
+// Po udanym zatwierdzeniu twórca dostaje mail z potwierdzeniem (błąd wysyłki jest tylko logowany).
+app.MapPost("/api/orders/{id:int}/approve", async (int id, OrderService service, OrderEmailService orderEmails) =>
+{
+    var result = await service.ApproveAsync(id);
+    if (result.Status == OperationStatus.Ok)
+        await orderEmails.SendOrderSubmittedAsync(id);
+    return result.ToHttpResult();
+})
 .RequireAuthorization();
 
 // Anulowanie zamówienia: "W opracowaniu" -> "Anulowane"

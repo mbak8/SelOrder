@@ -22,6 +22,12 @@
     <Folder Include="Properties\" />
   </ItemGroup>
 
+  <!-- Wspólny szablon maili o zamówieniach i logo do nich (używa ich też selorder-integration) -->
+  <ItemGroup>
+    <Compile Include="..\selorder-shared\Email\OrderEmailTemplate.cs" Link="Shared\Email\OrderEmailTemplate.cs" />
+    <EmbeddedResource Include="..\selorder-shared\Email\agroselnet-logo.png" Link="Shared\Email\agroselnet-logo.png" LogicalName="SelOrder.Shared.Email.agroselnet-logo.png" />
+  </ItemGroup>
+
   <ItemGroup>
     <Content Update="appsettings.Local.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
   </ItemGroup>
