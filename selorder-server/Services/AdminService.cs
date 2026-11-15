@@ -19,6 +19,7 @@ public partial class AdminService(AppDbContext db, IAppUserContext userContext)
     public const int MinPasswordLength = 8;
 
     private const int CompanyNameMaxLength = 255;
+    private const int ErpCodeMaxLength = 50;
     private const int LoginMaxLength = 100;
     private const int EmailMaxLength = 255;
     private const int PersonNameMaxLength = 100;
@@ -32,6 +33,7 @@ public partial class AdminService(AppDbContext db, IAppUserContext userContext)
     private static readonly Expression<Func<Tenant, TenantDto>> TenantProjection = t => new TenantDto(
         t.TenantId,
         t.Code,
+        t.ERPCode,
         t.CompanyName,
         t.IsActive,
         t.IsMaster,
@@ -57,7 +59,7 @@ public partial class AdminService(AppDbContext db, IAppUserContext userContext)
     {
         EnsureMaster();
 
-        // Filtry dynamiczne: klucze "code" i "companyName" to nazwy właściwości encji Tenant
+        // Filtry dynamiczne: klucze "code", "erpCode" i "companyName" to nazwy właściwości encji Tenant
         var query = db.Tenants
             .IgnoreQueryFilters()
             .AsNoTracking()
@@ -106,11 +108,15 @@ public partial class AdminService(AppDbContext db, IAppUserContext userContext)
         if (await db.Tenants.AnyAsync(t => t.Code == code, ct))
             return (CodeTaken, null);
 
+        var (erpValidation, erpCode) = await ValidateErpCodeAsync(null, request.ERPCode, ct);
+        if (erpValidation.Status != OperationStatus.Ok) return (erpValidation, null);
+
         // Nowy klient nigdy nie jest nadrzędny (w bazie może być co najwyżej jeden - UQ_Tenants_IsMaster)
         var tenant = new Tenant
         {
             TenantId = Guid.NewGuid(),
             Code = code,
+            ERPCode = erpCode,
             CompanyName = companyName,
             IsActive = request.IsActive,
             IsMaster = false,
@@ -118,10 +124,10 @@ public partial class AdminService(AppDbContext db, IAppUserContext userContext)
         };
 
         db.Tenants.Add(tenant);
-        if (!await TrySaveAsync(ct)) return (CodeTaken, null);
+        if (!await TrySaveAsync(ct)) return (TenantDuplicate, null);
 
         return (OperationResult.Ok, new TenantDto(
-            tenant.TenantId, tenant.Code, tenant.CompanyName, tenant.IsActive, tenant.IsMaster, tenant.CreatedAt, 0));
+            tenant.TenantId, tenant.Code, tenant.ERPCode, tenant.CompanyName, tenant.IsActive, tenant.IsMaster, tenant.CreatedAt, 0));
     }
 
     // Kodu nie zmieniamy - jest częścią numerów zamówień (ZS/{KOD}/{ROK}/{NR})
@@ -139,11 +145,15 @@ public partial class AdminService(AppDbContext db, IAppUserContext userContext)
         if (tenant.IsMaster && !request.IsActive)
             return OperationResult.Invalid("MasterTenantActive", "Nie można wyłączyć tenanta nadrzędnego.");
 
+        var (erpValidation, erpCode) = await ValidateErpCodeAsync(tenantId, request.ERPCode, ct);
+        if (erpValidation.Status != OperationStatus.Ok) return erpValidation;
+
         tenant.CompanyName = companyName;
+        tenant.ERPCode = erpCode;
         tenant.IsActive = request.IsActive;
 
-        await db.SaveChangesAsync(ct);
-        return OperationResult.Ok;
+        // Kodu klienta nie zmieniamy, więc jedyny możliwy konflikt unikalności to kod ERP
+        return await TrySaveAsync(ct) ? OperationResult.Ok : ErpCodeTaken;
     }
 
     // ===== UŻYTKOWNICY KLIENTA =====
@@ -246,6 +256,13 @@ public partial class AdminService(AppDbContext db, IAppUserContext userContext)
     private static readonly OperationResult CodeTaken =
         OperationResult.Conflict("CodeTaken", "Klient o takim kodzie już istnieje.");
 
+    private static readonly OperationResult ErpCodeTaken =
+        OperationResult.Conflict("ErpCodeTaken", "Inny klient ma już taki kod ERP.");
+
+    // Wyścig przy dodawaniu klienta: unikalny indeks odrzucił kod albo kod ERP
+    private static readonly OperationResult TenantDuplicate =
+        OperationResult.Conflict("TenantDuplicate", "Kod klienta lub kod ERP jest już używany przez innego klienta.");
+
     private static readonly OperationResult Duplicate =
         OperationResult.Conflict("Duplicate", "Login lub e-mail jest już używany przez inne konto.");
 
@@ -267,6 +284,25 @@ public partial class AdminService(AppDbContext db, IAppUserContext userContext)
 
         if (trimmed.Length == 0 || trimmed.Length > CompanyNameMaxLength)
             return (OperationResult.Invalid("InvalidCompanyName", $"Nazwa firmy jest wymagana (najwyżej {CompanyNameMaxLength} znaków)."), "");
+
+        return (OperationResult.Ok, trimmed);
+    }
+
+    // Kod ERP: pusty = brak (null). Wielkość liter zostawiamy jak w ERP (porównanie w bazie i tak jest bez rozróżniania).
+    // excludeTenantId = edytowany klient (null przy dodawaniu).
+    private async Task<(OperationResult Result, string? ErpCode)> ValidateErpCodeAsync(
+        Guid? excludeTenantId,
+        string? erpCode,
+        CancellationToken ct)
+    {
+        var trimmed = string.IsNullOrWhiteSpace(erpCode) ? null : erpCode.Trim();
+        if (trimmed == null) return (OperationResult.Ok, null);
+
+        if (trimmed.Length > ErpCodeMaxLength)
+            return (OperationResult.Invalid("InvalidErpCode", $"Kod ERP może mieć najwyżej {ErpCodeMaxLength} znaków."), null);
+
+        if (await db.Tenants.AnyAsync(t => t.ERPCode == trimmed && t.TenantId != excludeTenantId, ct))
+            return (ErpCodeTaken, null);
 
         return (OperationResult.Ok, trimmed);
     }

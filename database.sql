@@ -221,6 +221,7 @@ CREATE TABLE [dbo].[Tenants](
 	[CreatedAt] [datetimeoffset](7) NOT NULL, -- zawsze UTC (+00:00)
 	[Code] [nvarchar](10) NOT NULL,
 	[IsMaster] [bit] NOT NULL, -- tenant nadrzędny (właściciel portalu): podgląd zamówień wszystkich klientów
+	[ERPCode] [nvarchar](50) NULL, -- kod kontrahenta w systemie ERP (opcjonalny, unikalny)
 PRIMARY KEY CLUSTERED
 (
 	[TenantId] ASC
@@ -367,6 +368,15 @@ CREATE UNIQUE NONCLUSTERED INDEX [UQ_Tenants_Code] ON [dbo].[Tenants]
 (
 	[Code] ASC
 )WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+GO
+/****** Object:  Index [UQ_Tenants_ERPCode] ******/
+-- Kod ERP jest opcjonalny, ale jeśli podany - unikalny (jeden klient portalu = jeden kontrahent w ERP)
+CREATE UNIQUE NONCLUSTERED INDEX [UQ_Tenants_ERPCode] ON [dbo].[Tenants]
+(
+	[ERPCode] ASC
+)
+WHERE ([ERPCode] IS NOT NULL)
+WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, SORT_IN_TEMPDB = OFF, IGNORE_DUP_KEY = OFF, DROP_EXISTING = OFF, ONLINE = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
 GO
 SET ANSI_PADDING ON
 GO

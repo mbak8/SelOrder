@@ -11,9 +11,13 @@ import { UserFormDialog } from './UserFormDialog';
 
 interface TenantForm {
   code: string;
+  erpCode: string;
   companyName: string;
   isActive: boolean;
 }
+
+// Pusty kod ERP wysyłamy jako null (brak kodu)
+const orNull = (value: string) => (value.trim() === '' ? null : value.trim());
 
 type Message = { text: string; type: AdminMessageType };
 
@@ -28,7 +32,7 @@ export const ClientDetailsPage = () => {
   const isNew = id === 'new';
 
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [form, setForm] = useState<TenantForm>({ code: '', companyName: '', isActive: true });
+  const [form, setForm] = useState<TenantForm>({ code: '', erpCode: '', companyName: '', isActive: true });
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(!isNew);
   const [notFound, setNotFound] = useState(false);
@@ -58,7 +62,12 @@ export const ClientDetailsPage = () => {
         const [loadedTenant, loadedUsers] = await Promise.all([adminApi.getTenant(id), adminApi.getUsers(id)]);
         if (ignore) return;
         setTenant(loadedTenant);
-        setForm({ code: loadedTenant.code, companyName: loadedTenant.companyName, isActive: loadedTenant.isActive });
+        setForm({
+          code: loadedTenant.code,
+          erpCode: loadedTenant.erpCode ?? '',
+          companyName: loadedTenant.companyName,
+          isActive: loadedTenant.isActive
+        });
         setUsers(loadedUsers);
       } catch (err) {
         if (ignore) return;
@@ -78,13 +87,15 @@ export const ClientDetailsPage = () => {
     setMessage(null);
     setSaving(true);
     try {
+      const erpCode = orNull(form.erpCode);
       if (isNew) {
-        const created = await adminApi.createTenant(form);
+        const created = await adminApi.createTenant({ code: form.code, erpCode, companyName: form.companyName, isActive: form.isActive });
         setMessage({ text: t('Admin.Client.Created', 'Klient został dodany. Możesz teraz dodać jego użytkowników.'), type: 'success' });
         navigate(`/admin/clients/${created.id}`, { replace: true });
       } else {
-        await adminApi.updateTenant(id, { companyName: form.companyName, isActive: form.isActive });
-        setTenant(prev => prev && { ...prev, companyName: form.companyName.trim(), isActive: form.isActive });
+        await adminApi.updateTenant(id, { erpCode, companyName: form.companyName, isActive: form.isActive });
+        setTenant(prev => prev && { ...prev, erpCode, companyName: form.companyName.trim(), isActive: form.isActive });
+        setForm(prev => ({ ...prev, erpCode: erpCode ?? '' }));
         setMessage({ text: t('Admin.Saved', 'Zmiany zostały zapisane.'), type: 'success' });
       }
     } catch (err) {
@@ -186,15 +197,29 @@ export const ClientDetailsPage = () => {
               </div>
             </div>
             <div className="form-row">
-              <label className="form-label" htmlFor="tenant-name">{t('Admin.Client.CompanyName', 'Nazwa firmy')} *</label>
+              <label className="form-label" htmlFor="tenant-erp-code">{t('Admin.Client.ErpCode', 'Kod ERP')}</label>
               <input
-                id="tenant-name"
+                id="tenant-erp-code"
                 className="form-input"
-                maxLength={255}
-                value={form.companyName}
-                onChange={e => setForm({ ...form, companyName: e.target.value })}
+                maxLength={50}
+                value={form.erpCode}
+                onChange={e => setForm({ ...form, erpCode: e.target.value })}
               />
+              <div style={{ marginTop: 6, fontSize: '0.85em', color: '#777' }}>
+                {t('Admin.Client.ErpCodeHint', 'Kod kontrahenta w systemie ERP. Opcjonalny, unikalny, można go zmienić.')}
+              </div>
             </div>
+          </div>
+
+          <div className="form-row">
+            <label className="form-label" htmlFor="tenant-name">{t('Admin.Client.CompanyName', 'Nazwa firmy')} *</label>
+            <input
+              id="tenant-name"
+              className="form-input"
+              maxLength={255}
+              value={form.companyName}
+              onChange={e => setForm({ ...form, companyName: e.target.value })}
+            />
           </div>
 
           <div className="form-row">

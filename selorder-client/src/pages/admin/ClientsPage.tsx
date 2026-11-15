@@ -42,13 +42,19 @@ export const ClientsPage = () => {
     setPage(1);
   };
 
-  // Klucze kolumn z filtrem ("code", "companyName") = nazwy pól filtrowanych na serwerze
+  // Klucze kolumn z filtrem ("code", "erpCode", "companyName") = nazwy pól filtrowanych na serwerze
   const columns: Column<Tenant>[] = useMemo(() => [
     {
       key: 'code',
       header: t('Admin.Client.Code', 'Kod'),
       width: '140px',
       render: (val) => <strong>{val}</strong>
+    },
+    {
+      key: 'erpCode',
+      header: t('Admin.Client.ErpCode', 'Kod ERP'),
+      width: '160px',
+      render: (val) => val || '-'
     },
     {
       key: 'companyName',

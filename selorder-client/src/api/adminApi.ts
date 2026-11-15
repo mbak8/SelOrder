@@ -5,6 +5,7 @@ import { apiClient } from './client';
 export interface Tenant {
   id: string;
   code: string;
+  erpCode: string | null;
   companyName: string;
   isActive: boolean;
   isMaster: boolean;
@@ -12,14 +13,17 @@ export interface Tenant {
   userCount: number;
 }
 
+// Kod ERP jest opcjonalny (null = brak)
 export interface CreateTenantRequest {
   code: string;
+  erpCode: string | null;
   companyName: string;
   isActive: boolean;
 }
 
-// Kod klienta jest nadawany tylko przy tworzeniu (trafia do numerów zamówień)
+// Kod klienta jest nadawany tylko przy tworzeniu (trafia do numerów zamówień); kod ERP można zmieniać
 export interface UpdateTenantRequest {
+  erpCode: string | null;
   companyName: string;
   isActive: boolean;
 }

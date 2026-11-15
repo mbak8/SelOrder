@@ -6,6 +6,7 @@ namespace DTOs;
 public record TenantDto(
     Guid Id,
     string Code,
+    string? ERPCode,
     string CompanyName,
     bool IsActive,
     bool IsMaster,
@@ -14,14 +15,17 @@ public record TenantDto(
 );
 
 // Nowy klient. Kod trafia do numerów zamówień (ZS/{KOD}/{ROK}/{NR}), więc później nie można go zmienić.
+// Kod ERP jest opcjonalny (pusty = brak) i można go zmieniać.
 public record CreateTenantRequest(
     string Code,
+    string? ERPCode,
     string CompanyName,
     bool IsActive
 );
 
 // Edycja klienta - bez kodu
 public record UpdateTenantRequest(
+    string? ERPCode,
     string CompanyName,
     bool IsActive
 );

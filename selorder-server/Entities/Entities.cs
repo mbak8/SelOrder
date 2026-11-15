@@ -31,6 +31,10 @@ public class Tenant
     // ale tylko do podglądu. W bazie może być co najwyżej jeden (UQ_Tenants_IsMaster).
     public bool IsMaster { get; set; }
 
+    // Kod kontrahenta w systemie ERP (do synchronizacji). Opcjonalny, ale unikalny (UQ_Tenants_ERPCode).
+    [MaxLength(50)]
+    public string? ERPCode { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public ICollection<User> Users { get; set; } = [];
