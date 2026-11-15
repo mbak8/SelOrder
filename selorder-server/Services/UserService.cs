@@ -111,8 +111,9 @@ public class UserService(AppDbContext db, IAppUserContext userContext)
         // np. http://localhost:5173/reset-password?token=abc-123
         string link = $"{frontendUrlBase}/reset-password?token={token}";
 
-        // Wysyłamy maila
-        await emailService.SendPasswordResetEmailAsync(email, link);
+        // Wysyłamy maila w języku wybranym w oknie resetu hasła
+        // (klient wysyła go w nagłówku Accept-Language; brak nagłówka -> PL)
+        await emailService.SendPasswordResetEmailAsync(email, link, userContext.LanguageCode);
     }
 
     // KROK B: Finalizacja (Przyjmuje token i nowe hasło)

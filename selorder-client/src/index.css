@@ -13,12 +13,43 @@ html, body {
   max-width: 100vw;
 }
 
+/* Kolory motywu używane jako var(--color-...) na stronach logowania, resetu hasła, profilu
+   i w komunikatach panelu admina. Wartości jak w reszcie aplikacji (zieleń #2e7d32, ramki #ccc). */
+:root {
+  --color-primary: #2e7d32;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #e8f5e9;
+  --color-on-primary-container: #1b5e20;
+
+  --color-error: #d32f2f;
+  --color-error-container: #ffebee;
+  --color-on-error-container: #b71c1c;
+
+  --color-surface: #f4f6f8;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-surface: #333333;
+  --color-on-surface-variant: #666666;
+  --color-outline-variant: #cccccc;
+}
+
+/* Pola autouzupełnione przez przeglądarkę (zapisany login/hasło): białe tło i ciemny tekst
+   jak w pozostałych polach, zamiast szaro-niebieskiego podświetlenia Chrome. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-surface-container-lowest) inset;
+  -webkit-text-fill-color: var(--color-on-surface);
+  caret-color: var(--color-on-surface);
+}
+
 :root {
   font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
   line-height: 1.5;
   font-weight: 400;
 
-  color-scheme: light dark;
+  /* Aplikacja ma tylko jasny motyw. "light dark" sprawiało, że przy ciemnym trybie systemu
+     Chrome rysował kontrolki (np. autouzupełnione pola) w ciemnych kolorach na białym formularzu. */
+  color-scheme: light;
   color: rgba(255, 255, 255, 0.87);
   background-color: #242424;
 
